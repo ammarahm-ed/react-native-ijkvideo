@@ -1,0 +1,27 @@
+{
+  "name": "react-native-ijkplayer",
+  "version": "1.0.0",
+  "description": "An <IJKPlayer /> element for react-native",
+  "main": "./IJKPlayer.js",
+  "module": "./IJKPlayer.js",
+  "license": "MIT",
+  "author": "Chad Smith <chad@developer.email> (https://github.com/chadsmith)",
+  "contributors": [
+    {
+      "name": "wangcong",
+      "email": "king6cong@gmail.com"
+    },
+    {
+      "name": "Zhen Tian",
+      "email": "uimeet@gmail.com"
+    }
+  ],
+  "homepage": "https://github.com/chadsmith/react-native-ijkplayer",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:chadsmith/react-native-ijkplayer.git"
+  },
+  "dependencies": {
+    "prop-types": "^15.6.0"
+  }
+}

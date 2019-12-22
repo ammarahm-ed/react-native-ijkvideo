@@ -1,0 +1,50 @@
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            url 'https://maven.google.com/'
+            name 'Google'
+        }
+    }
+
+    dependencies {
+        classpath "com.android.tools.build:gradle:3.4.2"
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+    }
+    lintOptions {
+        abortOnError false
+    }
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven {
+        url 'https://maven.google.com/'
+        name 'Google'
+    }
+}
+
+dependencies {
+  implementation 'com.facebook.react:react-native:+'
+    implementation "androidx.annotation:annotation:1.1.0"
+  implementation 'com.parse.bolts:bolts-tasks:1.4.0'
+  implementation 'com.github.tcking:ijkplayer-java:0.8.8-full'
+  implementation 'com.github.tcking:ijkplayer-armv7a:0.8.8-full'
+  implementation 'com.github.tcking:ijkplayer-arm64:0.8.8-full'
+  implementation 'com.github.tcking:ijkplayer-x86:0.8.8-full'
+  implementation 'com.github.tcking:ijkplayer-x86_64:0.8.8-full'
+}
