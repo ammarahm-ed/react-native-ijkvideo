@@ -17,6 +17,8 @@ public class IJKPlayerPackage implements ReactPackage {
 
     private RCTIJKPlayerManager playerManager;
 
+
+
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
         if (playerManager == null) {

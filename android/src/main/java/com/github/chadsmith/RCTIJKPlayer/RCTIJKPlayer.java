@@ -1,12 +1,19 @@
 package com.github.chadsmith.RCTIJKPlayer;
 
+import android.annotation.TargetApi;
 import android.graphics.Bitmap;
+import android.media.AudioManager;
 import android.media.audiofx.AudioEffect;
 import android.media.audiofx.BassBoost;
+import android.media.audiofx.DynamicsProcessing;
 import android.media.audiofx.Equalizer;
+import android.media.audiofx.LoudnessEnhancer;
+import android.media.audiofx.PresetReverb;
 import android.nfc.Tag;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.FrameLayout;
 
@@ -43,7 +50,7 @@ import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.MediaInfo;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 
-public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,AudioEffect.OnEnableStatusChangeListener, IMediaPlayer.OnPreparedListener, IMediaPlayer.OnErrorListener, IMediaPlayer.OnCompletionListener, IMediaPlayer.OnInfoListener, IMediaPlayer.OnBufferingUpdateListener {
+public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener, AudioEffect.OnEnableStatusChangeListener, IMediaPlayer.OnPreparedListener, IMediaPlayer.OnErrorListener, IMediaPlayer.OnCompletionListener, IMediaPlayer.OnInfoListener, IMediaPlayer.OnBufferingUpdateListener {
 
     public enum Events {
         EVENT_LOAD_START("onVideoLoadStart"),
@@ -85,16 +92,10 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     private boolean mRepeat = false;
     private boolean mLoaded = false;
     private boolean mStalled = false;
-    private int mCurrentAudioSessionId;
+    private int mCurrentAudioSessionId = 0;
 
     private Equalizer mEqualizer;
-    private boolean mEqualizerEnabled = false;
-    private int mPreset = 0;
-    private ArrayList<ReadableMap> mBandLevels = new ArrayList<>();
 
-    private AudioBassBoost mBassBoost;
-    private boolean mBassBoostEnabled = false;
-    private int mBassBoostStrength;
 
     private WritableArray mVideoTracks = null;
     private WritableArray mAudioTracks = null;
@@ -389,181 +390,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     }
 
 
-    public void setEqualizerSettings(ReadableMap eqSettings) {
-
-        if (ijkVideoView != null && mEqualizerEnabled)
-            if (mEqualizer == null) {
-                return;
-            }
-        ReadableArray values = eqSettings.getArray("frequencies");
-        if (values == null) return;
-        Equalizer.Settings settings = new Equalizer.Settings();
-        settings.numBands = mEqualizer.getNumberOfBands();
-        short[] array = new short[mEqualizer.getNumberOfBands()];
-        for (short i = 0; i < values.size(); i++) {
-            array[i] = (short) values.getInt(i);
-        }
-        settings.bandLevels = array;
-        settings.curPreset = (short) eqSettings.getInt("currentPreset");
-        ijkVideoView.setEqualizerSettings(eqSettings.getBoolean("enabled"), settings);
-    }
-
-
-    public void getEQBandLevels(final Promise promise) {
-
-        if (ijkVideoView != null && mEqualizerEnabled)
-            mEqualizer = ijkVideoView.getEqualizer();
-        if (mEqualizer == null) {
-            promise.resolve(null);
-            return;
-        }
-        short numberFrequencyBands = mEqualizer.getNumberOfBands();
-        List<Short> bandLevels = new ArrayList<>();
-        for (short i = 0; i < numberFrequencyBands; i++) {
-            bandLevels.add(mEqualizer.getBandLevel(i));
-        }
-        WritableArray array = Arguments.fromList(bandLevels);
-        promise.resolve(array);
-
-    }
-
-    public void setEqualizerModifier(boolean equalizerEnabled) {
-        mEqualizerEnabled = equalizerEnabled;
-    }
-
-    public void setEqualizerEnabled(boolean enabled) {
-
-        if (ijkVideoView != null && mEqualizerEnabled)
-            mEqualizer = ijkVideoView.getEqualizer();
-        if (mEqualizer == null) {
-            return;
-        }
-        mEqualizer.setEnabled(enabled);
-
-    }
-
-    public void setEQBandLevel(ReadableMap bandLevel) {
-        if (ijkVideoView != null && mEqualizerEnabled)
-            mEqualizer = ijkVideoView.getEqualizer();
-
-
-        if (mEqualizer == null) {
-            return;
-        }
-        short bandIndex = (short) bandLevel.getInt("bandIndex");
-        int bandValue = bandLevel.getInt("level");
-
-        int hasBandIndex = -1;
-
-        if (mBandLevels.size() > 0) {
-            for (int i = 0; i == mBandLevels.size(); i++) {
-
-                if (mBandLevels.get(i).getInt("bandIndex") == bandIndex) {
-                    hasBandIndex = i;
-                }
-            }
-        } else {
-            mBandLevels.add(bandLevel);
-        }
-        if (hasBandIndex != -1) {
-            mBandLevels.add(hasBandIndex, bandLevel);
-
-        }
-        final short lowerEqualizerBandLevel = mEqualizer.getBandLevelRange()[0];
-        mEqualizer.setBandLevel(bandIndex,
-                (short) (bandValue + lowerEqualizerBandLevel));
-
-    }
-
-
-    public void setEQPreset(int presetIndex) {
-        if (ijkVideoView != null && mEqualizerEnabled && presetIndex <= mEqualizer.getNumberOfPresets())
-
-            mPreset = presetIndex;
-
-        mEqualizer = ijkVideoView.getEqualizer();
-        mEqualizer.usePreset((short) presetIndex);
-        mEqualizer.setEnabled(true);
-        Log.d("EQUALIZER", mEqualizer.getPresetName(mEqualizer.getCurrentPreset()));
-
-
-    }
-
-    public void getEQPresets(Promise promise) {
-        WritableArray args = new Arguments().createArray();
-        if (ijkVideoView != null && mEqualizerEnabled)
-
-            mEqualizer = ijkVideoView.getEqualizer();
-
-        if (mEqualizer == null) {
-            promise.resolve(null);
-            return;
-        }
-
-        int numOfPresets = mEqualizer.getNumberOfPresets();
-        for (int i = 0; i == numOfPresets; i++) {
-            WritableMap preset = new Arguments().createMap();
-            preset.putInt("index", i);
-            preset.putString("name", mEqualizer.getPresetName((short) i));
-            args.pushMap(preset);
-        }
-        promise.resolve(args);
-
-    }
-
-
-    public void getEQConfig(final Promise promise) {
-
-        if (ijkVideoView != null && mEqualizerEnabled)
-            mEqualizer = ijkVideoView.getEqualizer();
-
-        if (mEqualizer == null) {
-            promise.resolve(null);
-            return;
-        }
-        short numberFrequencyBands = mEqualizer.getNumberOfBands();
-
-        // get the level ranges to be used in setting the band level
-        // get lower limit of the range in decibels
-        final int lowerEqualizerBandLevel = mEqualizer.getBandLevelRange()[0] / 100;
-        // get the upper limit of the range in decibels
-        final int upperEqualizerBandLevel = mEqualizer.getBandLevelRange()[1] / 100;
-        List<String> frequencyList = new ArrayList<>();
-        for (short i = 0; i < numberFrequencyBands; i++) {
-            String frequency = (mEqualizer.getCenterFreq(i) / 1000) + " Hz";
-            frequencyList.add(frequency);
-        }
-        String[] presets = new String[mEqualizer.getNumberOfPresets()];
-        for (int k = 0; k < mEqualizer.getNumberOfPresets(); k++)
-            presets[k] = mEqualizer.getPresetName((short) k);
-
-        WritableMap map = Arguments.createMap();
-        map.putInt("lowerBandLevel", lowerEqualizerBandLevel);
-        map.putInt("upperBandLevel", upperEqualizerBandLevel);
-        map.putInt("noOfBands", numberFrequencyBands);
-        map.putArray("frequencies", Arguments.fromList(frequencyList));
-        map.putArray("presets", Arguments.fromArray(presets));
-        promise.resolve(map);
-    }
-
-
-    public void setBassBoostModifier (int strength)  {
-        if (strength > 0 && strength < 1000)
-        if (mBassBoost == null)
-        mBassBoost = new AudioBassBoost();
-
-        if (mCurrentAudioSessionId != 0)
-        mBassBoost.initializeBassEngine(mCurrentAudioSessionId);
-
-        if (mBassBoost.getBassBoostSupported()) {
-            mBassBoostStrength = strength;
-
-            mBassBoost.setBassStrength((short)strength);
-
-        }
-
-    }
-
 
     public void applyModifiers() {
         setPausedModifier(mPaused);
@@ -588,8 +414,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     public void onCompletion(IMediaPlayer iMediaPlayer) {
         WritableMap event = Arguments.createMap();
         mEventEmitter.receiveEvent(getId(), Events.EVENT_END.toString(), event);
-        mBassBoost.destroyBassEngine();
-
     }
 
     @Override
@@ -620,37 +444,21 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         return true;
     }
 
-    private void restoreEqualizerState() {
-        if (mEqualizerEnabled) {
-            if (mEqualizer != null) {
-                ijkVideoView.unbindCustomEqualizer();
-                mEqualizer = null;
-            }
-            mEqualizer = ijkVideoView.getEqualizer();
-            mEqualizer.usePreset((short) mPreset);
 
-            if (mBandLevels.size() < 0) {
-                for (int i = 0; i == mBandLevels.size(); i++) {
+    private OnAudioSessionIdRecieved mAudioSessionIdListener;
 
-                    int bandIndex = mBandLevels.get(i).getInt("bandIndex");
-                    int bandValue = mBandLevels.get(i).getInt("bandValue");
-                    final short lowerEqualizerBandLevel = mEqualizer.getBandLevelRange()[0];
-                    mEqualizer.setBandLevel((short) bandIndex,
-                            (short) (bandValue + lowerEqualizerBandLevel));
-                }
-            }
-            Log.d("EQUALIZER", mEqualizer.getPresetName(mEqualizer.getCurrentPreset()));
-         mEqualizer.setEnabled(true);
-        }
-    }
+   public void setOnAudioSessionIdListener(OnAudioSessionIdRecieved audioSessionIdListener) {
+      mAudioSessionIdListener = audioSessionIdListener;
+}
+
+
 
     @Override
     public void onPrepared(IMediaPlayer iMediaPlayer) {
         if (mLoaded)
             return;
-        mCurrentAudioSessionId = iMediaPlayer.getAudioSessionId();
-        restoreEqualizerState();
-        setBassBoostModifier(1);
+        if (mAudioSessionIdListener != null)
+            mAudioSessionIdListener.onAudioSessionId(iMediaPlayer);
 
         WritableMap event = Arguments.createMap();
         WritableArray videoTracks = new Arguments().createArray();

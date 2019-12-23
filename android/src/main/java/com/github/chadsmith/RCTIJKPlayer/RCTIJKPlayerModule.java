@@ -19,14 +19,12 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
 
     private RCTIJKPlayer videoView;
     private RCTIJKPlayerManager playerManager;
+    private Equalizer mEqualizer;
 
     public RCTIJKPlayerModule(ReactApplicationContext reactContext, RCTIJKPlayerManager playerManager) {
 
         super(reactContext);
         this.playerManager = playerManager;
-
-        Log.i("PLAYER_MANAGER",String.valueOf(playerManager));
-
 
     }
 
@@ -39,6 +37,7 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
     public void init() {
         if (playerManager != null) {
             videoView = playerManager.getPlayerInstance();
+            mEqualizer = playerManager.getEqualizerInstance();
         }
     }
 
@@ -46,50 +45,49 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void seek(final double seekTime) {
         init();
-        Log.i("HLLOO",String.valueOf(videoView));
         videoView.setSeekModifier(seekTime);
     }
 
     @ReactMethod
     public void setEqualizerSettings(ReadableMap eqSettings) {
         init();
-        videoView.setEqualizerSettings(eqSettings);
+        mEqualizer.setEqualizerSettings(eqSettings);
     }
 
     @ReactMethod
-    public void getEQBandLevels(final Promise promise){
+    public void getEQBandLevels(final Promise promise) {
         init();
-        videoView.getEQBandLevels(promise);
+        mEqualizer.getEQBandLevels(promise);
     }
 
     @ReactMethod
-    public void setEqualizerEnabled(boolean enabled){
+    public void setEqualizerEnabled(boolean enabled) {
         init();
-        videoView.setEqualizerEnabled(enabled);
+        mEqualizer.setEqualizerEnabled(enabled);
     }
 
     @ReactMethod
-    public void setEQBandLevel(ReadableMap bandLevel){
+    public void setEQBandLevel(ReadableMap bandLevel) {
         init();
-        videoView.setEQBandLevel(bandLevel);
+        mEqualizer.setEqualizerBandLevel(bandLevel);
     }
 
     @ReactMethod
-    public void setEQPreset(int presetIndex){
+    public void setEQPreset(int presetIndex) {
         init();
-        videoView.setEQPreset(presetIndex);
+        mEqualizer.setEqualizerPreset(presetIndex);
     }
 
     @ReactMethod
     public void getEQConfig(final Promise promise) {
         init();
-        videoView.getEQConfig(promise);
+        mEqualizer.getEqualizerConfig(promise);
     }
 
     @ReactMethod
     public void getEQPresets(final Promise promise) {
         init();
-        videoView.getEQPresets(promise);
+        mEqualizer.getEqualizerPresets(promise);
     }
 
     @ReactMethod
@@ -98,14 +96,37 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
         AudioEffect.Descriptor[] effects = AudioEffect.queryEffects();
         WritableArray args = new Arguments().fromArray(effects);
 
-
         promise.resolve(args);
+    }
 
+    @ReactMethod
+    public void getBassBoostStrength(final Promise promise) {
+        init();
+        mEqualizer.getBassBoostStrength(promise);
+
+    }
+
+    @ReactMethod
+    public void setBassBoostStrength(final int strength) {
+        init();
+        mEqualizer.setBassBoostModifier(strength);
+
+    }
+
+    @ReactMethod
+    public void getLoudnessGain(final Promise promise) {
+        init();
+        mEqualizer.getCurrentLoudness(promise);
 
     }
 
 
+    @ReactMethod
+    public void setLoudnessGain(final int gain) {
+        init();
+        mEqualizer.setLoudnessModifier(gain);
 
+    }
 
 
 }

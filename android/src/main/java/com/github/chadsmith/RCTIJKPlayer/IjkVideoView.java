@@ -111,20 +111,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
      * Equalizer Props
      */
 
-    private Equalizer mEqualizer;
-    private Equalizer.Settings mEqualizerSettings;
-    private boolean mEqualizerEnabled = false;
 
-    private int mNumOfBands = -1;
-    private int mNumOfPresets = -1;
-
-
-
-    private PresetReverb mPresetReverb;
-    private PresetReverb.Settings mPresetReverbSettings;
-
-    private EnvironmentalReverb mEnvoirmentalReverb;
-    private EnvironmentalReverb.Settings mEnvoirmentalReverbSettings;
 
 
 
@@ -152,6 +139,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     public IjkVideoView(Context context) {
         super(context);
         initVideoView(context);
+
     }
 
     public IjkVideoView(Context context, AttributeSet attrs) {
@@ -178,10 +166,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     private void initVideoView(Context context) {
         mAppContext = context.getApplicationContext();
 
-        if (mEqualizer != null) {
-            mAudioSessionId = -1;
-            unbindCustomEqualizer();
-        }
 
         setRenderView(renderView);
 
@@ -413,123 +397,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
     };
 
-    /**
-     * Equalizer
-     */
-
-
-    public Equalizer getEqualizer() {
-        if (mEqualizer == null) {
-            Log.i("EQExoPlayer", "Initializing equalizer...");
-            updateEqualizerPrefs(true, true);
-        }
-        return mEqualizer;
-    }
-
-    public void setEqualizerSettings(boolean enabled, Equalizer.Settings settings) {
-        boolean invalidate = mEqualizerEnabled != enabled || mEqualizerEnabled;
-        boolean wasSystem = isUsingSystemEqualizer();
-
-        mEqualizerEnabled = enabled;
-        mEqualizerSettings = settings;
-
-        if (invalidate) {
-            updateEqualizerPrefs(enabled, wasSystem);
-        }
-    }
-
-    private void updateEqualizerPrefs(boolean useCustom, boolean wasSystem) {
-        Log.i("EQExoPlayer", "Updating equalizer prefs...");
-        int audioSessionId = mMediaPlayer.getAudioSessionId();
-        mAudioSessionId = audioSessionId;
-        Log.i("EQExoPlayer", "AudioSessionId=" + String.valueOf(audioSessionId));
-
-        if (audioSessionId == 0) {
-            // No equalizer is currently bound. Nothing to do.
-            return;
-        }
-
-        if (useCustom) {
-            if (wasSystem || mEqualizer == null) {
-                // System -> custom
-                unbindSystemEqualizer(audioSessionId);
-                bindCustomEqualizer(audioSessionId);
-            } else {
-                // Custom -> custom
-                mEqualizer.setProperties(mEqualizerSettings);
-            }
-        } else {
-            if (!wasSystem) {
-                // Custom -> system
-                unbindCustomEqualizer();
-                bindSystemEqualizer(audioSessionId);
-            }
-            // Nothing to do for system -> system
-        }
-    }
-
-    private boolean isUsingSystemEqualizer() {
-        return false; // mEqualizerSettings == null || !mEqualizerEnabled;
-    }
-
-    private void onBindEqualizer(int newAudioSessionId) {
-
-        if (isUsingSystemEqualizer()) {
-            bindSystemEqualizer(newAudioSessionId);
-        } else {
-            bindCustomEqualizer(newAudioSessionId);
-        }
-    }
-
-    private void bindSystemEqualizer(int audioSessionId) {
-        Intent intent = new Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
-        intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId);
-        intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, getContext().getPackageName());
-        getContext().sendBroadcast(intent);
-    }
-
-    private void bindCustomEqualizer(int audioSessionId) {
-        mEqualizer = new Equalizer(0, audioSessionId);
-
-        if (mEqualizerSettings != null)
-            mEqualizer.setProperties(mEqualizerSettings);
-
-        mEqualizer.setEnabled(true);
-    }
-
-    private void onUnbindEqualizer(int oldAudioSessionId) {
-        if (isUsingSystemEqualizer()) {
-            unbindSystemEqualizer(oldAudioSessionId);
-
-        } else {
-            unbindCustomEqualizer();
-        }
-    }
-
-    private void unbindSystemEqualizer(int audioSessionId) {
-        Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
-        intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId);
-        intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, getContext().getPackageName());
-        getContext().sendBroadcast(intent);
-    }
-
-    public void destroy() {
-        if (mEqualizer != null) {
-            Log.i("EQExoPlayer", "Destroying equalizer...");
-            mEqualizer.setEnabled(false);
-            mEqualizer.setEnableStatusListener(null);
-            mEqualizer.release();
-            mEqualizer = null;
-        }
-    }
-
-    public void unbindCustomEqualizer() {
-        destroy();
-    }
-
-    /**
-     * Equalizer End.
-     */
 
 
     /**
@@ -587,7 +454,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         if (mMediaPlayer != null) {
             mMediaPlayer.stop();
             mMediaPlayer.release();
-            unbindCustomEqualizer();
+
             mMediaPlayer = null;
             mCurrentState = STATE_IDLE;
             mTargetState = STATE_IDLE;
@@ -762,7 +629,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
                     mTargetState = STATE_PLAYBACK_COMPLETED;
                     if (mOnCompletionListener != null) {
                         mOnCompletionListener.onCompletion(mMediaPlayer);
-                        unbindCustomEqualizer();
+
                         initVideoView(getContext());
                     }
                 }
@@ -1012,7 +879,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         if (mMediaPlayer != null) {
             mMediaPlayer.reset();
             mMediaPlayer.release();
-            unbindCustomEqualizer();
             mAudioSessionId = -1;
             mMediaPlayer = null;
             // REMOVED: mPendingSubtitleTracks.clear();
