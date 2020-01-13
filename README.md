@@ -67,7 +67,19 @@ Sets the media source.
 | FILE,RTMP,HTTP,HTTPS,RTSP | Yes |Android, iOS
 
 ---
+### `seek`
 
+Seek to the specified position represented by seconds.
+
+| Type | Required |Platform|
+| ---- | -------- |-------|
+| number(seconds) | no |Android, iOS
+
+    Example:
+    
+    seek={200} // seek video to 3 minutes & 2 seconds
+
+---
 
 
 ### MIT Licensed
