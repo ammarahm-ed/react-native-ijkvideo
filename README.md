@@ -54,15 +54,21 @@ or if you use yarn:
 
     yarn add react-native-ijkvideo
 
-## Usage
-For complete usage, see the example project.
+# Reference
 
-##  IJKVideo Props
+## Props
+
+### `src`
+
+Sets the media source. 
+
+| Type | Required |Platform|
+| ---- | -------- |-------|
+| FILE,RTMP,HTTP,HTTPS,RTSP | Yes |Android, iOS
+
+---
 
 
-## IJKVideo Methods
-ActionSheet can be opened or closed using its ref.
-#
 
 ### MIT Licensed
 
