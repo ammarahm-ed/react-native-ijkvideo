@@ -3,6 +3,9 @@
 # react-native-ijkvideo
 A Cross Platform (Android & iOS) video & audio component with react-native-video like API & all formats support based on IJKPlayer FFMpeg 3.2.
 
+# Work in Progress... 
+This project is in very early stages and not suggested for production level apps.
+
 **Features:**
 
  - FFMPEG 3.2 based IJKPlayer Backend
