@@ -1,4 +1,5 @@
 
+
 # react-native-ijkvideo
 A Cross Platform (Android & iOS) video & audio component with react-native-video like API & all formats support based on IJKPlayer FFMpeg 3.2.
 
@@ -8,14 +9,21 @@ A Cross Platform (Android & iOS) video & audio component with react-native-video
  - IJKplayer library size is small so don't worry about app size. its around 6 Megabytes on Android and compressed, it is even smaller.
  - Supports every format, including those that exoplayer does not support
  - react-native-video like api with some extra features.
- - Hardware decoding & async decoding
+ - MediaCodec Hardware decoding
  - Disable audio or video rendering completely.
  - Equalizer, bassboost & loudness enhancer support
  - Video resizing & scaling
  - Native subtitle (SubRip ass and mov_text etc.) render on Android.
  - Multi audio, video & subtitle trackselection. 
- - Snapshotsupport
+ - Snapshot support
+ - Video Mirroring
  - Video playback rate
+ - Background playback
+ - Support for H.265/HEVC playback
+ - SoundTouch Support
+ - Async Decoding Multi Thread
+ - Uses TextureView on Android
+
 
 |      Type   |  Supported   |
 |:----------:|:---------------------:|
