@@ -150,9 +150,10 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
                         WritableMap event = Arguments.createMap();
                         event.putDouble(EVENT_PROP_CURRENT_TIME, ijkVideoView.getCurrentPosition() / 1000.0);
                         event.putDouble(EVENT_PROP_DURATION, ijkVideoView.getDuration() / 1000.0);
-                        mEventEmitter.receiveEvent(getId(), Events.EVENT_PROGRESS.toString(), event);
-                        event.putInt("tcpSpeed", (int) ijkVideoView.getTcpSpeed());
+                         event.putInt("tcpSpeed", (int) ijkVideoView.getTcpSpeed());
                         event.putInt("fileSize", (int) ijkVideoView.getFileSize());
+                        mEventEmitter.receiveEvent(getId(), Events.EVENT_PROGRESS.toString(), event);
+                       
 
                         mProgressUpdateHandler.postDelayed(mProgressUpdateRunnable, Math.round(mProgressUpdateInterval));
                     }
