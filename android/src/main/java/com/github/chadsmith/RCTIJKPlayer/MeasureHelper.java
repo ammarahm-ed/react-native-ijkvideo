@@ -19,6 +19,7 @@ package com.github.chadsmith.RCTIJKPlayer;
 
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 
 import java.lang.ref.WeakReference;
 
@@ -98,21 +99,53 @@ public final class MeasureHelper {
             } else if (isWiderThanView == true && isLargerThanView == true) {
                 if (mVideoWidth > mVideoHeight) {
                     h = (float) width / videoAspectRatio;
-                    w = width;
+                    if (h > height) {
+                        float diff =  h - height;
+                        h = h - diff;
+                        w = h *videoAspectRatio;
+                    } else {
+                        w = width;
+                    }
 
                 } else {
                     w = (float) height * videoAspectRatio;
-                    h = height;
+                    if (w > width) {
+                        float diff =  w - width;
+                        w = w - diff;
+                        h = w/videoAspectRatio;
+                        Log.i("HERE", "HERE");
+                    } else {
+                        h = height;
+                    }
                 }
+
             } else {
 
                 if (mVideoWidth > mVideoHeight) {
                     h = (float) width / videoAspectRatio;
-                    w = width;
+                    if (h > height) {
+                        float diff =  h - height;
+                       h = h - diff;
+                        w = h *videoAspectRatio;
+                    } else {
+                        w = width;
+                    }
+
+                    Log.i("THERE", "THERE");
 
                 } else {
+
                     w = (float) height * videoAspectRatio;
-                    h = height;
+                    if (w > width) {
+                        float diff =  w - width;
+                        w = w - diff;
+                        h = w/videoAspectRatio;
+                        Log.i("HERE", "HERE");
+                    } else {
+                        h = height;
+                    }
+
+
                 }
 
             }

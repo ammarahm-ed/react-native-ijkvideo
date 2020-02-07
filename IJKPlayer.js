@@ -20,8 +20,9 @@ export default class IJKPlayer extends Component {
     this._root.setNativeProps(nativeProps);
   }
 
-  seek = (time) => {
-    this.setNativeProps({ seek: time });
+  seek = (time,pauseAfterSeek) => {
+    IJKPlayerModule.seek(time,pauseAfterSeek);
+    //this.setNativeProps({ seek: time, pauseAfterSeek: pauseAfterSeek });
   };
 
   snapshot = (snapshotPath) => {
@@ -44,7 +45,7 @@ export default class IJKPlayer extends Component {
   };
 
   _onLoad = (event) => {
-    console.log(event.nativeEvent);
+   
     IJKPlayerModule.init();
     if (this.props.onLoad) {
       this.props.onLoad(event.nativeEvent);
@@ -59,6 +60,7 @@ export default class IJKPlayer extends Component {
   };
 
   _onProgress = (event) => {
+  
     if (this.props.onProgress) {
       this.props.onProgress(event.nativeEvent);
     }

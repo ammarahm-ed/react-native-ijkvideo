@@ -34,6 +34,7 @@ import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 
 import android.util.AttributeSet;
 import android.util.Log;
@@ -273,6 +274,16 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         mSubtitlesEnabled = subtitlesEnabled;
     }
 
+    public long getTcpSpeed() {
+        return mIjkMediaPlayer.getTcpSpeed();
+    }
+
+    public long getFileSize() {
+        return mIjkMediaPlayer.getFileSize();
+    }
+
+
+
 
     /**
      * Change the aspect ratio of the video.
@@ -281,6 +292,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
      *                   "contain","cover","original",
      *                   fill_horizontal,"fill_vertical"
      */
+
+
 
     public void setVideoAspect(final String resizeMode) {
 
@@ -378,6 +391,14 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     }
 
+    public void deSelectTrack(int trackID) {
+        if (mMediaPlayer != null)
+            mIjkMediaPlayer.deselectTrack(trackID);
+
+    }
+
+
+
     public void setVideo(final boolean videoDisabled) {
         if (mMediaPlayer != null)
             mVideoDisabled = videoDisabled;
@@ -424,7 +445,13 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
      * @param uri the URI of the video.
      */
     public void setVideoURI(Uri uri) {
-        setVideoURI(uri, null);
+      setVideoURI(uri, null);
+      stopPlayback();
+      initVideoView(getContext());
+      openVideo();
+      requestLayout();
+      invalidate();
+
     }
 
     /**
@@ -441,6 +468,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         mUri = uri;
         mHeaders = headers;
         mSeekWhenPrepared = 0;
+        stopPlayback();
         initVideoView(getContext());
         openVideo();
         requestLayout();
@@ -541,15 +569,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
     }
 
-    Equalizer.OnEnableStatusChangeListener mOnEqualizerEnableStatusChange = new Equalizer.OnEnableStatusChangeListener() {
-        @Override
-        public void onEnableStatusChange(AudioEffect effect, boolean enabled) {
-
-            Log.i("EQ", String.valueOf(enabled));
-            Log.i("EQ", String.valueOf(effect));
-        }
-
-    };
 
 
     IMediaPlayer.OnVideoSizeChangedListener mSizeChangedListener =
@@ -904,7 +923,9 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     @Override
     public void pause() {
-        if (isInPlaybackState()) {
+
+        if (isInPlaybackState() ) {
+
             if (mMediaPlayer.isPlaying()) {
                 mMediaPlayer.pause();
                 mCurrentState = STATE_PAUSED;
@@ -1002,6 +1023,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     private int mCurrentAspectRatio = IRenderView.AR_CONTAIN;
     private int mMaxFpsLimit = 60;
+    private boolean mAutoPlay = false;
 
     public IjkMediaPlayer createPlayer() {
         IjkMediaPlayer ijkMediaPlayer = new IjkMediaPlayer();
@@ -1010,8 +1032,14 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 1);
 
 
+           ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "start-on-prepared", 0);
+
+
+
+
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "packet-buffering", 1);
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "overlay-format", IjkMediaPlayer.SDL_FCC_RV32);
+
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "framedrop", 1);
 
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "max-fps", mMaxFpsLimit);

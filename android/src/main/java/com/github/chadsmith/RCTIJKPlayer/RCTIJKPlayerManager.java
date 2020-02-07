@@ -113,7 +113,9 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
 
     @ReactProp(name = PROP_SEEK, defaultDouble = 0.0)
     public void setSeek(final RCTIJKPlayer mVideoView,   final double seekTime) {
-        mVideoView.setSeekModifier(seekTime);
+
+        mVideoView.setSeekModifier(seekTime,false);
+
     }
 
     @ReactProp(name = PROP_SNAPSHOT_PATH)
@@ -208,8 +210,12 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
 
     @ReactProp(name = PROP_EQUALIZER_ENABLED, defaultBoolean = false)
     public void setEqualizerEnabled(final RCTIJKPlayer mVideoView, final boolean equalizerEnabled) {
+        if (mEqualizer == null){
+            mEqualizer = new Equalizer(videoView.getContext());
+        }
 
         mEqualizer.setEqualizerEnabled(equalizerEnabled);
+
     }
 
     @ReactProp(name = PROP_ASYNC_DECODING, defaultBoolean = false)
@@ -223,6 +229,10 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
 
     @ReactProp(name=PROP_BASSBOOST_ENABLED, defaultBoolean = false)
     public void setBassBoostEnabled(final RCTIJKPlayer mVideoView,   final boolean enabled) {
+        if (mEqualizer == null){
+            mEqualizer = new Equalizer(videoView.getContext());
+        }
+
 
         mEqualizer.setBassBoostEnabled(enabled);
 
@@ -240,14 +250,14 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     public void setReverbEnabled(final RCTIJKPlayer mVideoView,  final boolean enabled) {
         if (mEqualizer == null)
             mEqualizer = new Equalizer(videoView.getContext());
-        mEqualizer.setReverbEnabled(enabled);
+        //mEqualizer.setReverbEnabled(enabled);
 
     }
     @ReactProp(name=PROP_REVERB_MODE )
     public void setReverbMode(final RCTIJKPlayer mVideoView,  final String reverbMode) {
         if (mEqualizer == null)
             mEqualizer = new Equalizer(videoView.getContext());
-        mEqualizer.setPresetReverbMode(reverbMode);
+       // mEqualizer.setPresetReverbMode(reverbMode);
     }
 
 

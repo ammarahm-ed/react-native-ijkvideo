@@ -9,6 +9,8 @@ import android.media.audiofx.LoudnessEnhancer;
 import android.media.audiofx.PresetReverb;
 import android.util.Log;
 
+
+
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableArray;
@@ -74,6 +76,7 @@ public class Equalizer implements OnAudioSessionIdRecieved, IMediaPlayer.OnCompl
 
     public Equalizer(Context context) {
         this.context = context;
+
 
     }
 
@@ -186,6 +189,9 @@ public class Equalizer implements OnAudioSessionIdRecieved, IMediaPlayer.OnCompl
 
 
     public void getEQBandLevels(final Promise promise) {
+
+
+
 
         if (mMediaPlayer != null && mEqualizerEnabled)
             initializeEqualizer();
@@ -410,10 +416,12 @@ public class Equalizer implements OnAudioSessionIdRecieved, IMediaPlayer.OnCompl
      */
 
     public void destroyLoudnessEnhancer() {
-        if (mLoudnessEnhancer != null)
+        if (mLoudnessEnhancer != null) {
             mLoudnessEnhancer.setEnabled(false);
-        mLoudnessEnhancer.release();
-        mLoudnessEnhancer = null;
+            mLoudnessEnhancer.release();
+            mLoudnessEnhancer = null;
+        }
+
     }
 
 
@@ -494,12 +502,16 @@ public class Equalizer implements OnAudioSessionIdRecieved, IMediaPlayer.OnCompl
      */
     public void getBassBoostStrength(Promise promise) {
         if (mBassBoost == null) {
+
             initializeBassEngine(mCurrentAudioSessionId);
+
+        }
+        if (mBassBoost != null) {
+            BassBoost.Settings settings = mBassBoost.getProperties();
+
+            promise.resolve(settings.strength);
         }
 
-        BassBoost.Settings settings = mBassBoost.getProperties();
-
-        promise.resolve(settings.strength);
 
     }
 
@@ -531,10 +543,13 @@ public class Equalizer implements OnAudioSessionIdRecieved, IMediaPlayer.OnCompl
      */
 
     public void destroyBassEngine() {
-        mBassBoostSettings = mBassBoost.getProperties();
-        mBassBoost.release();
-        mBassBoost.setEnabled(false);
-        mBassBoost = null;
+        if (mBassBoost != null) {
+            mBassBoostSettings = mBassBoost.getProperties();
+            mBassBoost.release();
+            mBassBoost.setEnabled(false);
+            mBassBoost = null;
+        }
+
 
     }
 
@@ -621,17 +636,29 @@ public class Equalizer implements OnAudioSessionIdRecieved, IMediaPlayer.OnCompl
     @Override
     public void onAudioSessionId(IMediaPlayer mp) {
 
-        unbindCustomEqualizer();
-        destroyBassEngine();
-        destroyLoudnessEnhancer();
+        if (mEqualizer != null) {
+
+            unbindCustomEqualizer();
+        }
+       if (mBassBoost != null) {
+           destroyBassEngine();
+       }
+      if (mLoudnessEnhancer != null) {
+          destroyLoudnessEnhancer();
+      }
+
+
         mCurrentAudioSessionId = 0;
 
         Log.i(TAG,"HERE");
         mMediaPlayer = mp;
         mCurrentAudioSessionId = mp.getAudioSessionId();
-        restoreEqualizerState();
-        setBassBoostModifier(mBassBoostStrength);
-        setLoudnessModifier(mDefaultLoudnessGain);
+        if (mEqualizerEnabled) {
+            restoreEqualizerState();
+            setBassBoostModifier(mBassBoostStrength);
+            setLoudnessModifier(mDefaultLoudnessGain);
+        }
+
 
     }
 

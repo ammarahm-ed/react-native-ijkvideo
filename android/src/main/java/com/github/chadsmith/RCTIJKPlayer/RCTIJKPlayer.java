@@ -1,7 +1,9 @@
 package com.github.chadsmith.RCTIJKPlayer;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.audiofx.AudioEffect;
 import android.media.audiofx.BassBoost;
@@ -18,6 +20,8 @@ import android.util.Log;
 import android.widget.FrameLayout;
 
 import androidx.annotation.RequiresPermission;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentManager;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
@@ -101,7 +105,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     private WritableArray mAudioTracks = null;
     private WritableArray mTextTracks = null;
 
-    private ThemedReactContext themedReactContext;
+    private ThemedReactContext themedContext;
 
 
     private float mProgressUpdateInterval = 250;
@@ -114,6 +118,8 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     public RCTIJKPlayer(ThemedReactContext themedReactContext) {
         super(themedReactContext);
+
+        themedContext = themedReactContext;
 
         mEventEmitter = themedReactContext.getJSModule(RCTEventEmitter.class);
         themedReactContext.addLifecycleEventListener(this);
@@ -132,6 +138,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         ijkVideoView.setOnBufferingUpdateListener(this);
 
         addView(ijkVideoView);
+
     }
 
     private void setProgressUpdateRunnable() {
@@ -144,6 +151,8 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
                         event.putDouble(EVENT_PROP_CURRENT_TIME, ijkVideoView.getCurrentPosition() / 1000.0);
                         event.putDouble(EVENT_PROP_DURATION, ijkVideoView.getDuration() / 1000.0);
                         mEventEmitter.receiveEvent(getId(), Events.EVENT_PROGRESS.toString(), event);
+                        event.putInt("tcpSpeed", (int) ijkVideoView.getTcpSpeed());
+                        event.putInt("fileSize", (int) ijkVideoView.getFileSize());
 
                         mProgressUpdateHandler.postDelayed(mProgressUpdateRunnable, Math.round(mProgressUpdateInterval));
                     }
@@ -176,9 +185,12 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             });
     }
 
+
+
     public void setSrc(final String uriString, final ReadableMap readableMap, final String userAgent) {
         if (uriString == null)
             return;
+
 
 
         mLoaded = false;
@@ -190,8 +202,22 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         event.putMap(RCTIJKPlayerManager.PROP_SRC, src);
         mEventEmitter.receiveEvent(getId(), Events.EVENT_LOAD_START.toString(), event);
 
+        if (ijkVideoView == null) {
+            ijkVideoView = new IjkVideoView(themedContext);
 
-        if (userAgent != null)
+            setProgressUpdateRunnable();
+
+            ijkVideoView.setOnPreparedListener(this);
+            ijkVideoView.setOnErrorListener(this);
+            ijkVideoView.setOnCompletionListener(this);
+            ijkVideoView.setOnInfoListener(this);
+            ijkVideoView.setOnBufferingUpdateListener(this);
+
+            addView(ijkVideoView);
+        }
+
+        if (userAgent != null && ijkVideoView != null)
+
             ijkVideoView.setUserAgent(userAgent);
 
 
@@ -223,9 +249,17 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             ijkVideoView.setVideoPath(uriString);
     }
 
+
+
     public void setPausedModifier(final boolean paused) {
+
+        Log.i("STATUS_CHANGE", "PAUSING   :" + paused);
+        if (mPaused == paused) return;
+
+
+
         mPaused = paused;
-        Log.i("PAUSE", "i am pausing");
+
         if (ijkVideoView == null) return;
         if (mPaused) {
             if (ijkVideoView.isPlaying()) {
@@ -239,13 +273,15 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         }
     }
 
-    public void setSeekModifier(final double seekTime) {
-        Log.i("HLLOO", "HELLOOO");
+
+    public void setSeekModifier(final double seekTime,final boolean pauseAfterSeek) {
+
         if (ijkVideoView != null)
 
             ijkVideoView.seekTo((int) (seekTime * 1000));
 
-        Log.i("HLLOO", "HELLOOO");
+
+
     }
 
     public void setResizeModifier(final String resizeMode) {
@@ -292,6 +328,17 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         mProgressUpdateInterval = progressUpdateInterval;
         mProgressUpdateRunnable = null;
         setProgressUpdateRunnable();
+
+    }
+
+    public void getCurrentSelectedTracks(Promise promise) {
+
+        WritableMap args = new Arguments().createMap();
+        args.putInt("selectedAudioTrack",  ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO) );
+        args.putInt("selectedAudioTrack", ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_VIDEO) );
+        args.putInt("selectedAudioTrack",   ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT) );
+
+        promise.resolve(args);
 
     }
 
@@ -433,12 +480,35 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         switch (message) {
             case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
 
+                setMutedModifier(true);
+
                 mStalled = true;
                 break;
             case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
 
+
+
                 mStalled = false;
                 break;
+            case IjkMediaPlayer.MEDIA_INFO_VIDEO_SEEK_RENDERING_START:
+
+                if (mPaused) {
+
+                 ijkVideoView.pause();
+
+                }
+                break;
+
+            case IjkMediaPlayer.MEDIA_INFO_AUDIO_SEEK_RENDERING_START:
+                if (mPaused) {
+                    setMutedModifier(false);
+                    ijkVideoView.pause();
+
+                } else {
+                    setMutedModifier(false);
+                }
+                break;
+
         }
 
         return true;
@@ -459,6 +529,10 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             return;
         if (mAudioSessionIdListener != null)
             mAudioSessionIdListener.onAudioSessionId(iMediaPlayer);
+
+
+
+
 
         WritableMap event = Arguments.createMap();
         WritableArray videoTracks = new Arguments().createArray();
@@ -544,6 +618,8 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             return;
         WritableMap event = Arguments.createMap();
         event.putDouble(EVENT_PROP_BUFFERING_PROG, percent / 100);
+        event.putInt("tcpSpeed", (int) ijkVideoView.getTcpSpeed());
+        event.putInt("fileSize", (int) ijkVideoView.getFileSize());
         event.putString(EVENT_PROP_DATASOURCE, iMediaPlayer.getDataSource());
         mEventEmitter.receiveEvent(getId(), Events.EVENT_STALLED.toString(), event);
     }

@@ -3,6 +3,7 @@ package com.github.chadsmith.RCTIJKPlayer;
 import android.media.audiofx.AudioEffect;
 import android.util.Log;
 
+
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -11,6 +12,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.shell.MainReactPackage;
 
 import java.util.ArrayList;
 
@@ -39,13 +41,25 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
             videoView = playerManager.getPlayerInstance();
             mEqualizer = playerManager.getEqualizerInstance();
         }
+
+
+
+
+
     }
 
 
     @ReactMethod
-    public void seek(final double seekTime) {
+    public void seek(final double seekTime, final boolean pauseAfterSeek) {
         init();
-        videoView.setSeekModifier(seekTime);
+        videoView.setSeekModifier(seekTime,pauseAfterSeek);
+    }
+
+
+    @ReactMethod
+    public void getSelectedTracks(Promise promise) {
+        init();
+        videoView.getCurrentSelectedTracks(promise);
     }
 
     @ReactMethod
