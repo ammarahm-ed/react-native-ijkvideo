@@ -41,11 +41,12 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
             videoView = playerManager.getPlayerInstance();
             mEqualizer = playerManager.getEqualizerInstance();
         }
+}
 
-
-
-
-
+    @ReactMethod
+    public  void setPan( final float left, final float right) {
+        init();
+        videoView.setStereoPanModifier(left,right);
     }
 
 

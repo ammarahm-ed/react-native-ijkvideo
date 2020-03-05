@@ -35,6 +35,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
         videoView = new RCTIJKPlayer(context);
         mEqualizer = new Equalizer(videoView.getContext());
         videoView.setOnAudioSessionIdListener(mEqualizer);
+
         return videoView;
 
     }
@@ -56,6 +57,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     private static final String PROP_AUDIO_TRACK = "selectedAudioTrack";
     private static final String PROP_VIDEO_TRACK = "selectedVideoTrack";
     private static final String PROP_TEXT_TRACK = "selectedTextTrack";
+    private static final String PROP_DESELECT_TRACK = "deselectTrack";
     private static final String PROP_SUBTITLE_DISPLAY = "subtitleStyle";
     private static final String PROP_SUBTITLES = "subtitlesEnabled";
     private static final String PROP_DISABLE_AUDIO = "audioDisabled";
@@ -69,7 +71,8 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     private static final String PROP_REVERB_MODE = "reverbMode";
     private static final String PROP_REVERB_ENABLED = "reverbEnabled";
 
-    
+
+
     private RCTIJKPlayer videoView;
     private Equalizer mEqualizer;
 
@@ -77,10 +80,10 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     public RCTIJKPlayer getPlayerInstance() { // <-- returns the View instance
         return videoView;
     }
+
     public Equalizer getEqualizerInstance() {
         if (mEqualizer == null)
             mEqualizer = new Equalizer(videoView.getContext());
-
 
 
         return mEqualizer;
@@ -107,70 +110,78 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     }
 
     @ReactProp(name = PROP_MUTED, defaultBoolean = false)
-    public void setMuted(final RCTIJKPlayer mVideoView,   final boolean muted) {
+    public void setMuted(final RCTIJKPlayer mVideoView, final boolean muted) {
         mVideoView.setMutedModifier(muted);
     }
 
     @ReactProp(name = PROP_SEEK, defaultDouble = 0.0)
-    public void setSeek(final RCTIJKPlayer mVideoView,   final double seekTime) {
+    public void setSeek(final RCTIJKPlayer mVideoView, final double seekTime) {
 
-        mVideoView.setSeekModifier(seekTime,false);
+        mVideoView.setSeekModifier(seekTime, false);
 
     }
 
     @ReactProp(name = PROP_SNAPSHOT_PATH)
-    public void setSnapshotPath(final RCTIJKPlayer mVideoView,   final String snapshotPath) throws IOException {
+    public void setSnapshotPath(final RCTIJKPlayer mVideoView, final String snapshotPath) throws IOException {
         mVideoView.setSnapshotPath(snapshotPath);
     }
 
     @ReactProp(name = PROP_VIDEO_PAUSED, defaultBoolean = false)
-    public void setPaused(final RCTIJKPlayer mVideoView,   final boolean paused) {
+    public void setPaused(final RCTIJKPlayer mVideoView, final boolean paused) {
         mVideoView.setPausedModifier(paused);
     }
 
     @ReactProp(name = PROP_RESIZE_MODE)
-    public void setResizeMode(final RCTIJKPlayer mVideoView,   final String resizeMode) {
+    public void setResizeMode(final RCTIJKPlayer mVideoView, final String resizeMode) {
 
         mVideoView.setResizeModifier(resizeMode);
     }
 
     @ReactProp(name = PROP_VOLUME, defaultFloat = 1.0f)
-    public void setVolume(final RCTIJKPlayer mVideoView,   final float volume) {
+    public void setVolume(final RCTIJKPlayer mVideoView, final float volume) {
         mVideoView.setVolumeModifier(volume);
     }
 
     @ReactProp(name = PROP_REPEAT, defaultBoolean = false)
-    public void setRepeat(final RCTIJKPlayer mVideoView,   final boolean repeat) {
+    public void setRepeat(final RCTIJKPlayer mVideoView, final boolean repeat) {
         mVideoView.setRepeatModifer(repeat);
     }
 
     @ReactProp(name = PROP_RATE, defaultFloat = 1.0f)
-    public void setPlaybackRate(final RCTIJKPlayer mVideoView,   final float rate) {
+    public void setPlaybackRate(final RCTIJKPlayer mVideoView, final float rate) {
         mVideoView.setPlaybackRateModifer(rate);
     }
 
     @ReactProp(name = PROP_PROGRESS_UPDATE_INTERVAL, defaultInt = 250)
-    public void setProgressUpdateInterval(final RCTIJKPlayer mVideoView,   final int progressUpdateInterval) {
+    public void setProgressUpdateInterval(final RCTIJKPlayer mVideoView, final int progressUpdateInterval) {
         mVideoView.setProgressUpdateInterval(progressUpdateInterval);
     }
 
     @ReactProp(name = PROP_AUDIO_TRACK)
-    public void selectAudioTrack(final RCTIJKPlayer mVideoView,  final int trackID) {
+    public void selectAudioTrack(final RCTIJKPlayer mVideoView, final int trackID) {
         mVideoView.selectAudioTrack(trackID);
     }
 
     @ReactProp(name = PROP_VIDEO_TRACK)
-    public void selectVideoTrack(final RCTIJKPlayer mVideoView,   final int trackID) {
+    public void selectVideoTrack(final RCTIJKPlayer mVideoView, final int trackID) {
         mVideoView.selectVideoTrack(trackID);
     }
 
     @ReactProp(name = PROP_TEXT_TRACK)
-    public void selectTextTrack(final RCTIJKPlayer mVideoView,   final int trackID) {
+    public void selectTextTrack(final RCTIJKPlayer mVideoView, final int trackID) {
         mVideoView.selectTextTrack(trackID);
+
     }
 
+    @ReactProp(name = PROP_DESELECT_TRACK)
+    public void deselectTrack(final RCTIJKPlayer mVideoView, final int trackID) {
+        mVideoView.deselectTrack(trackID);
+
+    }
+
+
     @ReactProp(name = PROP_SUBTITLE_DISPLAY)
-    public void setSubtitleDisplay(final RCTIJKPlayer mVideoView,   ReadableMap subtitleStyle) {
+    public void setSubtitleDisplay(final RCTIJKPlayer mVideoView, ReadableMap subtitleStyle) {
 
         String color = subtitleStyle.getString("color");
         String backgroundColor = subtitleStyle.getString("backgroundColor");
@@ -181,36 +192,36 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     }
 
     @ReactProp(name = PROP_SUBTITLES, defaultBoolean = false)
-    public void setSubtitle(final RCTIJKPlayer mVideoView,   final boolean subtitlesEnabled) {
+    public void setSubtitle(final RCTIJKPlayer mVideoView, final boolean subtitlesEnabled) {
         mVideoView.setSubtitles(subtitlesEnabled);
     }
 
     @ReactProp(name = PROP_DISABLE_AUDIO, defaultBoolean = false)
-    public void setAudio(final RCTIJKPlayer mVideoView,   final boolean audioDisabled) {
+    public void setAudio(final RCTIJKPlayer mVideoView, final boolean audioDisabled) {
         mVideoView.setAudio(audioDisabled);
     }
 
     @ReactProp(name = PROP_DISABLE_VIDEO, defaultBoolean = false)
-    public void setVideo(final RCTIJKPlayer mVideoView,   final boolean videoDisabled) {
+    public void setVideo(final RCTIJKPlayer mVideoView, final boolean videoDisabled) {
         mVideoView.setVideo(videoDisabled);
     }
 
     @ReactProp(name = PROP_AUDIO_FOCUS, defaultBoolean = true)
-    public void setAudioFocus(final RCTIJKPlayer mVideoView,   final boolean audioFocus) {
+    public void setAudioFocus(final RCTIJKPlayer mVideoView, final boolean audioFocus) {
 
         mVideoView.setAudioFocus(audioFocus);
     }
 
 
     @ReactProp(name = PROP_PLAY_IN_BACKGROUND, defaultBoolean = false)
-    public void setBackgroundPlay(final RCTIJKPlayer mVideoView,   final boolean playInBackground) {
+    public void setBackgroundPlay(final RCTIJKPlayer mVideoView, final boolean playInBackground) {
 
         mVideoView.setBackgroundPlay(playInBackground);
     }
 
     @ReactProp(name = PROP_EQUALIZER_ENABLED, defaultBoolean = false)
     public void setEqualizerEnabled(final RCTIJKPlayer mVideoView, final boolean equalizerEnabled) {
-        if (mEqualizer == null){
+        if (mEqualizer == null) {
             mEqualizer = new Equalizer(videoView.getContext());
         }
 
@@ -219,17 +230,16 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     }
 
     @ReactProp(name = PROP_ASYNC_DECODING, defaultBoolean = false)
-    public void setAsyncDecoding(final RCTIJKPlayer mVideoView,   final boolean asyncDecoding) {
+    public void setAsyncDecoding(final RCTIJKPlayer mVideoView, final boolean asyncDecoding) {
 
         // TODO
 
 
-
     }
 
-    @ReactProp(name=PROP_BASSBOOST_ENABLED, defaultBoolean = false)
-    public void setBassBoostEnabled(final RCTIJKPlayer mVideoView,   final boolean enabled) {
-        if (mEqualizer == null){
+    @ReactProp(name = PROP_BASSBOOST_ENABLED, defaultBoolean = false)
+    public void setBassBoostEnabled(final RCTIJKPlayer mVideoView, final boolean enabled) {
+        if (mEqualizer == null) {
             mEqualizer = new Equalizer(videoView.getContext());
         }
 
@@ -238,34 +248,28 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
 
     }
 
-    @ReactProp(name=PROP_LOUDNESS_ENABLED, defaultBoolean = false)
-    public void setLoudnessEnabled(final RCTIJKPlayer mVideoView,   final boolean enabled) {
+    @ReactProp(name = PROP_LOUDNESS_ENABLED, defaultBoolean = false)
+    public void setLoudnessEnabled(final RCTIJKPlayer mVideoView, final boolean enabled) {
         if (mEqualizer == null)
             mEqualizer = new Equalizer(videoView.getContext());
         mEqualizer.setLoudnessEnabled(enabled);
 
     }
 
-    @ReactProp(name=PROP_REVERB_ENABLED, defaultBoolean = false)
-    public void setReverbEnabled(final RCTIJKPlayer mVideoView,  final boolean enabled) {
+    @ReactProp(name = PROP_REVERB_ENABLED, defaultBoolean = false)
+    public void setReverbEnabled(final RCTIJKPlayer mVideoView, final boolean enabled) {
         if (mEqualizer == null)
             mEqualizer = new Equalizer(videoView.getContext());
         //mEqualizer.setReverbEnabled(enabled);
 
     }
-    @ReactProp(name=PROP_REVERB_MODE )
-    public void setReverbMode(final RCTIJKPlayer mVideoView,  final String reverbMode) {
+
+    @ReactProp(name = PROP_REVERB_MODE)
+    public void setReverbMode(final RCTIJKPlayer mVideoView, final String reverbMode) {
         if (mEqualizer == null)
             mEqualizer = new Equalizer(videoView.getContext());
-       // mEqualizer.setPresetReverbMode(reverbMode);
+        // mEqualizer.setPresetReverbMode(reverbMode);
     }
-
-
-
-
-
-
-
 
 
 }
