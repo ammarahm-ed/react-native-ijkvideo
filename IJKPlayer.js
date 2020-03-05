@@ -25,6 +25,31 @@ export default class IJKPlayer extends Component {
     //this.setNativeProps({ seek: time, pauseAfterSeek: pauseAfterSeek });
   };
 
+  setVolume = (volume) => {
+    this.setNativeProps({volume:volume});
+  }
+  setPaused  = (paused) => {
+    this.setNativeProps({paused:paused})
+  }
+
+  setMute = (mute) => {
+    this.setNativeProps({mute:mute});
+  }
+
+  setPan = (pan) => {
+    let l = 1;
+    let r = 1;
+    if (pan < 0) {
+      l = 1;
+      r = 1 + pan;
+    } else {
+      r = 1;
+      l = 1 - pan;
+    }
+    console.log(l,r);
+    IJKPlayerModule.setPan(l,r)
+  }
+
   snapshot = (snapshotPath) => {
     this.setNativeProps({ snapshotPath });
   };
@@ -90,6 +115,29 @@ export default class IJKPlayer extends Component {
     }
   };
 
+  _onTimedText = (event) => {
+    console.log(event.nativeEvent);
+  if (this.props.onTimedText) {
+    this.props.onTimedText(event.nativeEvent);
+  }
+  }
+
+  setTextTrackIndex = (index) => {
+    this.setNativeProps({selectedTextTrack:index})
+
+  }
+
+  setAudioTrackIndex = (index) => {
+    IJKPlayerModule.getSelectedTracks().then(e => console.log(e));
+    console.log(index, 'setting track');
+    this.setNativeProps({selectedAudioTrack:index})
+    
+  }
+
+  deselectTrack = (index) => {
+    this.setNativeProps({deselectTrack:index});
+  }
+
 
 
   render() {
@@ -117,6 +165,7 @@ export default class IJKPlayer extends Component {
       onVideoStop: this._onStop,
       onVideoEnd: this._onEnd,
       onVideoBuffer: this._onBuffer,
+      onTimedText: this._onTimedText
     });
 
     return (
