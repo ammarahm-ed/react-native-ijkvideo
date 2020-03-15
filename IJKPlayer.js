@@ -36,6 +36,10 @@ export default class IJKPlayer extends Component {
     this.setNativeProps({mute:mute});
   }
 
+  takeSnapshot = async (path) => {
+    return await IJKPlayerModule.takeSnapshot(path);
+  }
+
   setPan = (pan) => {
     let l = 1;
     let r = 1;
@@ -116,7 +120,7 @@ export default class IJKPlayer extends Component {
   };
 
   _onTimedText = (event) => {
-    console.log(event.nativeEvent);
+    console.log("HERE",event.nativeEvent);
   if (this.props.onTimedText) {
     this.props.onTimedText(event.nativeEvent);
   }
@@ -136,6 +140,12 @@ export default class IJKPlayer extends Component {
 
   deselectTrack = (index) => {
     this.setNativeProps({deselectTrack:index});
+  }
+
+  _onPlay = () => {
+    if (this.props.onPlay) {
+      this.props.onPlay();
+    }
   }
 
 
@@ -165,7 +175,8 @@ export default class IJKPlayer extends Component {
       onVideoStop: this._onStop,
       onVideoEnd: this._onEnd,
       onVideoBuffer: this._onBuffer,
-      onTimedText: this._onTimedText
+      onTimedText: this._onTimedText,
+      onPlay:this._onPlay
     });
 
     return (
