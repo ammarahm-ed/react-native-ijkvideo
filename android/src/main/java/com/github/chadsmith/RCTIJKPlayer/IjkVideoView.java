@@ -59,6 +59,7 @@ import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaCodecInfo;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkTimedText;
+import tv.danmaku.ijk.media.player.ffmpeg.FFmpegApi;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.player.misc.IjkMediaFormat;
 import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
@@ -446,7 +447,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
      */
     public void setVideoPath(String path) {
         setVideoURI(Uri.parse(path));
-
     }
 
     /**
@@ -1116,8 +1116,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
 
 
-        if (mSubtitlesEnabled)
-            ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "subtitle", 1);
+       ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "subtitle", 1);
 
         if (mUserAgent != null)
             ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "user_agent", mUserAgent);

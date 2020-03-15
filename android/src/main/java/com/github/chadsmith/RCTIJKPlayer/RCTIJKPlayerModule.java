@@ -49,6 +49,19 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
         videoView.setStereoPanModifier(left,right);
     }
 
+    @ReactMethod
+    public  void takeSnapshot(final String path, Promise promise) {
+        init();
+        try {
+         videoView.takeSnapshot(path,promise);
+        } catch (Exception e) {
+            promise.reject(e.getMessage());
+        }
+
+    }
+
+
+
 
     @ReactMethod
     public void seek(final double seekTime, final boolean pauseAfterSeek) {
