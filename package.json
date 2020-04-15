@@ -1,5 +1,5 @@
 {
-  "name": "react-native-ijkplayer",
+  "name": "react-native-ijkvideo",
   "version": "1.0.0",
   "description": "An <IJKPlayer /> element for react-native",
   "main": "./IJKPlayer.js",
