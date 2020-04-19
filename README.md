@@ -81,6 +81,15 @@ Seek to the specified position represented by seconds.
 
 ---
 
+# TODO
+
+- [x]  Android Implementation
+- [ ]  iOS Implementation
+- [ ]  Publish binaries to Cocoapods and Bintray
+- [ ]  Add Typescript Definations
+- [ ]  Create full documentation on now.sh
+- [ ]  Cleanup code
+
 
 ### MIT Licensed
 
