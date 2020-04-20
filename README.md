@@ -35,24 +35,6 @@ This project is in very early stages and not suggested for production level apps
 | Video Encoders |  H263, H264, H265, MPEG1, MPEG2, MPEG4, MJPEG, VC-1, WMV, RV40, PNG, JPEG, YUV, WEBP, TIFF, VP* |
 | Audio Encoders |  AAC, MP3, NELLYMOSER, AMRNB, AMRWB, WMV1, WMV2, WMV3, OGG, FLAC, DTS, COOK |
 
-## Run the Example
-To run the example app clone the project
-
-    git clone https://github.com/ammarahm-ed/react-native-ijkvideo.git
-
-      
-
-   then run ` yarn or npm install` in the example folder and finally to run the example app:
-       
-   
-    react-native run-android
-
-## Installation
-
-    npm install react-native-ijkvideo --save
-or if you use yarn:
-
-    yarn add react-native-ijkvideo
 
 # Reference
 
