@@ -43,7 +43,7 @@ This project is in very early stages and not suggested for production level apps
 - [ ]  Add Typescript Definations
 - [ ]  Create full documentation on now.sh
 - [ ]  Cleanup code
-
+- [ ]  Create an example
 
 ### MIT Licensed
 
