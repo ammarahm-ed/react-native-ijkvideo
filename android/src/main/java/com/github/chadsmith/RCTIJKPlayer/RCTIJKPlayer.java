@@ -1,33 +1,19 @@
 package com.github.chadsmith.RCTIJKPlayer;
 
-import android.annotation.TargetApi;
-import android.app.Activity;
 import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.media.AudioManager;
 import android.media.audiofx.AudioEffect;
-import android.media.audiofx.BassBoost;
-import android.media.audiofx.DynamicsProcessing;
-import android.media.audiofx.Equalizer;
-import android.media.audiofx.LoudnessEnhancer;
-import android.media.audiofx.PresetReverb;
-import android.nfc.Tag;
-import android.os.Build;
-import android.os.Bundle;
+
 import android.os.Handler;
-import android.provider.MediaStore;
 import android.util.Log;
+import android.view.Choreographer;
+import android.view.View;
 import android.widget.FrameLayout;
 
-import androidx.annotation.RequiresPermission;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.FragmentManager;
+import androidx.annotation.Nullable;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Promise;
-import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.ReadableType;
@@ -39,11 +25,8 @@ import com.facebook.react.uimanager.events.RCTEventEmitter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -57,41 +40,13 @@ import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 
 public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener, onTimedTextAvailable, AudioEffect.OnEnableStatusChangeListener, IMediaPlayer.OnPreparedListener, IMediaPlayer.OnErrorListener, IMediaPlayer.OnCompletionListener, IMediaPlayer.OnInfoListener, IMediaPlayer.OnBufferingUpdateListener {
 
-    public enum Events {
-        EVENT_LOAD_START("onVideoLoadStart"),
-        EVENT_LOAD("onVideoLoad"),
-        EVENT_STALLED("onVideoBuffer"),
-        EVENT_ERROR("onVideoError"),
-        EVENT_PROGRESS("onVideoProgress"),
-        EVENT_PAUSE("onVideoPause"),
-        EVENT_STOP("onVideoStop"),
-        EVENT_END("onVideoEnd"),
-        EVENT_TIMED_TEXT("onTimedText"),
-        EVENT_VIDEO_PLAYING("onPlay");
-        private final String mName;
 
-        Events(final String name) {
-            mName = name;
-        }
+    private ThemedReactContext themedContext;
 
-        @Override
-        public String toString() {
-            return mName;
-        }
-    }
-
-    public static final String EVENT_PROP_DURATION = "duration";
-    public static final String EVENT_PROP_CURRENT_TIME = "currentTime";
-
-    public static final String EVENT_PROP_ERROR = "error";
-    public static final String EVENT_PROP_WHAT = "what";
-    public static final String EVENT_PROP_EXTRA = "extra";
-    public static final String EVENT_PROP_DATASOURCE = "dataSource";
-
-    public static final String EVENT_PROP_BUFFERING_PROG = "progress";
-
+    private IjkVideoView mVideoView;
     public RCTEventEmitter mEventEmitter;
 
+    public boolean mPlayInBackground = true;
     private boolean mPaused = false;
     private boolean mMuted = false;
     private float mVolume = 1.0f;
@@ -99,65 +54,102 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     private boolean mRepeat = false;
     private boolean mLoaded = false;
     private boolean mStalled = false;
-    private int mCurrentAudioSessionId = 0;
-
-    private Equalizer mEqualizer;
-
-
-    private WritableArray mVideoTracks = null;
-    private WritableArray mAudioTracks = null;
-    private WritableArray mTextTracks = null;
-
-    private ThemedReactContext themedContext;
-
+    private String mVideoSource;
+    private String mUserAgent;
+    private ReadableMap mHeaders;
 
     private float mProgressUpdateInterval = 250;
-
     private Handler mProgressUpdateHandler = new Handler();
     private Runnable mProgressUpdateRunnable = null;
-
-    private IjkVideoView ijkVideoView;
-
 
     public RCTIJKPlayer(ThemedReactContext themedReactContext) {
         super(themedReactContext);
 
         themedContext = themedReactContext;
-
-        mEventEmitter = themedReactContext.getJSModule(RCTEventEmitter.class);
-        themedReactContext.addLifecycleEventListener(this);
-
-        IjkMediaPlayer.loadLibrariesOnce(null);
-        IjkMediaPlayer.native_profileBegin("libijkplayer.so");
-        ijkVideoView = new IjkVideoView(themedReactContext);
-
-
-        setProgressUpdateRunnable();
-        ijkVideoView.setOnTimedTextAvailableListener(this);
-        ijkVideoView.setOnPreparedListener(this);
-        ijkVideoView.setOnErrorListener(this);
-        ijkVideoView.setOnCompletionListener(this);
-        ijkVideoView.setOnInfoListener(this);
-        ijkVideoView.setOnBufferingUpdateListener(this);
-
-        addView(ijkVideoView);
-        ijkVideoView.setContext(themedContext, getId());
+        loadNativeJNI();
+        setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        setFocusable(false);
+        setFocusableInTouchMode(false);
+        initializePlayer();
 
     }
 
+    /**
+     * Initialize the player
+     *
+     * Attach VideoView
+     * Add Progress update event
+     * Attach all event listeners for the video player
+     */
+
+    public void initializePlayer() {
+
+        setVideoView();
+        setProgressUpdateRunnable();
+        setEventListeners();
+    }
+
+    /**
+     * Set the video view and attach it to the screen.
+     */
+
+    private void setVideoView() {
+        if (themedContext != null) {
+
+            mVideoView = new IjkVideoView(themedContext);
+            addView(mVideoView);
+            mVideoView.setContext(themedContext, getId());
+            mVideoView.setFocusable(false);
+            mVideoView.setFocusableInTouchMode(false);
+            setupLayoutHack();
+        }
+    }
+
+    /**
+     * Load ijkplayer native lib
+     */
+
+    private void loadNativeJNI() {
+        IjkMediaPlayer.loadLibrariesOnce(null);
+        IjkMediaPlayer.native_profileBegin("libijkplayer.so");
+    }
+
+
+    /**
+     * Set event listeners for the video player
+     */
+
+    private void setEventListeners() {
+        if (themedContext != null && mVideoView != null) {
+            mEventEmitter = themedContext.getJSModule(RCTEventEmitter.class);
+            themedContext.addLifecycleEventListener(this);
+            mVideoView.setOnTimedTextAvailableListener(this);
+            mVideoView.setOnPreparedListener(this);
+            mVideoView.setOnErrorListener(this);
+            mVideoView.setOnCompletionListener(this);
+            mVideoView.setOnInfoListener(this);
+            mVideoView.setOnBufferingUpdateListener(this);
+        }
+
+    }
+
+
+    /**
+     * Set the progressUpdateInterval
+     */
+
     private void setProgressUpdateRunnable() {
-        if (ijkVideoView != null)
+        if (mVideoView != null)
             mProgressUpdateRunnable = new Runnable() {
                 @Override
                 public void run() {
-                    if (ijkVideoView != null && ijkVideoView.isPlaying() && !mPaused) {
+                    if (mVideoView != null && mVideoView.isPlaying() && !mPaused) {
                         WritableMap event = Arguments.createMap();
-                        event.putDouble(EVENT_PROP_CURRENT_TIME, ijkVideoView.getCurrentPosition() / 1000.0);
-                        event.putDouble(EVENT_PROP_DURATION, ijkVideoView.getDuration() / 1000.0);
-                        event.putInt("tcpSpeed", (int) ijkVideoView.getTcpSpeed());
-                        event.putInt("fileSize", (int) ijkVideoView.getFileSize());
-                        mEventEmitter.receiveEvent(getId(), Events.EVENT_PROGRESS.toString(), event);
-
+                        event.putDouble(Constants.EVENT_PROP_CURRENT_TIME, mVideoView.getCurrentPosition() / 1000.0);
+                        event.putDouble(Constants.EVENT_PROP_DURATION, mVideoView.getDuration() / 1000.0);
+                        event.putInt("tcpSpeed", (int) mVideoView.getTcpSpeed());
+                        event.putInt("fileSize", (int) mVideoView.getFileSize());
+                        mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_PROGRESS.toString(), event);
 
                         mProgressUpdateHandler.postDelayed(mProgressUpdateRunnable, Math.round(mProgressUpdateInterval));
                     }
@@ -167,65 +159,42 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     }
 
 
-    private void releasePlayer() {
-        if (ijkVideoView != null)
-            Task.callInBackground(new Callable<Void>() {
-
-                @Override
-                public Void call() throws Exception {
-                    ijkVideoView.setOnPreparedListener(null);
-                    ijkVideoView.setOnErrorListener(null);
-                    ijkVideoView.setOnCompletionListener(null);
-                    ijkVideoView.setOnInfoListener(null);
-                    ijkVideoView.setOnBufferingUpdateListener(null);
-                    ijkVideoView.stopPlayback();
-                    mAudioTracks = null;
-                    mVideoTracks = null;
-                    mTextTracks = null;
-                    mProgressUpdateRunnable = null;
-                    ijkVideoView = null;
-                    return null;
-                }
-
-            });
-    }
+    /**
+     * Set Video Source
+     *
+     * @param uriString   Local path or url to the video
+     * @param readableMap Headers for the url if any
+     * @param userAgent   Adds a userAgent
+     */
 
 
-    public void setSrc(final String uriString, final ReadableMap readableMap, final String userAgent) {
+    public void setSrc(final String uriString, @Nullable final ReadableMap readableMap, @Nullable final String userAgent) {
         if (uriString == null)
             return;
-
-
-        mLoaded = false;
-        mStalled = false;
 
         WritableMap src = Arguments.createMap();
         src.putString(RCTIJKPlayerManager.PROP_SRC_URI, uriString);
         WritableMap event = Arguments.createMap();
         event.putMap(RCTIJKPlayerManager.PROP_SRC, src);
-        mEventEmitter.receiveEvent(getId(), Events.EVENT_LOAD_START.toString(), event);
+        mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_LOAD_START.toString(), event);
 
-        Log.d("IJKMEDIA", "HERE BABY");
-
-        if (ijkVideoView == null) {
-            ijkVideoView = new IjkVideoView(themedContext);
-
-            setProgressUpdateRunnable();
-
-            ijkVideoView.setOnPreparedListener(this);
-            ijkVideoView.setOnErrorListener(this);
-            ijkVideoView.setOnCompletionListener(this);
-            ijkVideoView.setOnInfoListener(this);
-            ijkVideoView.setOnBufferingUpdateListener(this);
-
-            addView(ijkVideoView);
-            ijkVideoView.setContext(themedContext, getId());
+        mLoaded = false;
+        mStalled = false;
+        mVideoSource = uriString;
+        mHeaders = readableMap;
+        mUserAgent = userAgent;
+        if (mVideoView.isPlaying()) {
+            mVideoView.stopPlayback();
+            mVideoView.removeView(mVideoView);
+            mVideoView.release(true);
+            mVideoView = null;
         }
 
-        if (userAgent != null && ijkVideoView != null)
-
-            ijkVideoView.setUserAgent(userAgent);
-
+        if (mVideoView == null) {
+            initializePlayer();
+        }
+        if (userAgent != null && mVideoView != null)
+            mVideoView.setUserAgent(userAgent);
 
         if (readableMap != null) {
             Map<String, String> headerMap = new HashMap<>();
@@ -245,101 +214,144 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
                 }
             }
             headerMap.put("Headers", headers.toString());
-
-            mAudioTracks = null;
-            mVideoTracks = null;
-            mTextTracks = null;
-
-            ijkVideoView.setVideoPath(uriString, headerMap);
+            mVideoView.setVideoPath(uriString, headerMap);
         } else
-            ijkVideoView.setVideoPath(uriString);
+            mVideoView.setVideoPath(uriString);
     }
 
 
+    /**
+     *
+     * Play or pause the video
+     * @param paused pause video if true
+     */
+
+
     public void setPausedModifier(final boolean paused) {
-
-        Log.i("STATUS_CHANGE", "PAUSING   :" + paused);
-        //if (mPaused == paused) return;
-
-
         mPaused = paused;
-
-        if (ijkVideoView == null) return;
+        if (mVideoView == null) return;
         if (mPaused) {
-            if (ijkVideoView.isPlaying()) {
-                ijkVideoView.pause();
+            if (mVideoView.isPlaying()) {
+                mVideoView.pause();
             }
         } else {
-            if (!ijkVideoView.isPlaying()) {
-                ijkVideoView.start();
+            if (!mVideoView.isPlaying()) {
+                mVideoView.start();
                 mProgressUpdateHandler.post(mProgressUpdateRunnable);
             }
         }
     }
 
+    /**
+     * Seek the video to given time in ms
+     * @param seekTime  seek time in ms
+     * @param pauseAfterSeek Should the video pause after seek has completed
+     */
 
     public void setSeekModifier(final double seekTime, final boolean pauseAfterSeek) {
-
-        if (ijkVideoView != null)
-
-            ijkVideoView.seekTo((int) (seekTime * 1000));
-
-
+        if (mVideoView != null)
+            mVideoView.seekTo((int) (seekTime * 1000));
     }
+
+
+    /**
+     * Set the resizeMode for the video
+     * It can be one of
+     * FILL_VERTICAL
+     * FILL_HORIZONTAL
+     * CONTAIN
+     * COVER
+     * STRETCH
+     * ORIGINAL
+     *
+     * @param resizeMode type of resizeMode for the video
+     *
+     */
 
     public void setResizeModifier(final String resizeMode) {
-        if (ijkVideoView != null)
-            ijkVideoView.setVideoAspect(resizeMode);
+        if (mVideoView != null)
+            mVideoView.setVideoAspect(resizeMode);
     }
+
+
+    /**
+     * Mute the audio
+      * @param muted
+     */
 
     public void setMutedModifier(final boolean muted) {
         mMuted = muted;
-        if (ijkVideoView == null) return;
+        if (mVideoView == null) return;
         if (mMuted) {
-            ijkVideoView.setVolume(0.0f, 0.0f);
+            mVideoView.setVolume(0.0f, 0.0f);
         } else {
-            ijkVideoView.setVolume(mVolume, mVolume);
+            mVideoView.setVolume(mVolume, mVolume);
         }
     }
+
+    /**
+     * Set the volume of the video, independant from Android system volume.
+     * @param volume
+     */
 
     public void setVolumeModifier(final float volume) {
         mVolume = volume;
-        if (ijkVideoView != null) {
-
+        if (mVideoView != null) {
             if (volume > 1.0f || volume < 0.0f) return;
-            ijkVideoView.setVolume(mVolume, mVolume);
+            mVideoView.setVolume(mVolume, mVolume);
 
         }
     }
+
+
+    /**
+     * Change audio balance between left and right Channels
+     *
+     * @param left left audio channel volume level
+     * @param right right audio channel volume level
+     *
+     */
+
+
 
     public void setStereoPanModifier(final float left, final float right) {
-
-
-        if (ijkVideoView != null) {
-
-
+        if (mVideoView != null) {
             if (left > 1.0f || left < 0.0f || right > 1.0f || right < 0.0f) return;
-
-            ijkVideoView.setVolume(left, right);
+            mVideoView.setVolume(left, right);
         }
 
     }
 
+    /**
+     * set if the video should repeat itself after playing is ended
+     *
+     * @param repeat
+     */
 
     public void setRepeatModifer(final boolean repeat) {
         mRepeat = repeat;
-        if (ijkVideoView != null)
-            ijkVideoView.repeat(mRepeat);
+        if (mVideoView != null)
+            mVideoView.repeat(mRepeat);
 
     }
+
+    /**
+     * The the speed of video playback
+     *
+     * @param rate
+     */
 
     public void setPlaybackRateModifer(final float rate) {
         mPlaybackSpeed = rate;
-
-        if (ijkVideoView != null)
-            ijkVideoView.setPlaybackRate(mPlaybackSpeed);
-
+        if (mVideoView != null)
+            mVideoView.setPlaybackRate(mPlaybackSpeed);
     }
+
+    /**
+     * Set the interval after which progress should be updated.
+     *
+     * @param progressUpdateInterval
+     */
 
     public void setProgressUpdateInterval(final int progressUpdateInterval) {
 
@@ -349,98 +361,117 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     }
 
+
+    /**
+     * Get the current selected track for audio, video and subtitle
+     *
+     * @param promise returns a promise with an object
+     */
+
     public void getCurrentSelectedTracks(Promise promise) {
-
         WritableMap args = new Arguments().createMap();
-        args.putInt("selectedAudioTrack", ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO));
-        args.putInt("selectedVideoTrack", ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_VIDEO));
-        args.putInt("selectedTextTrack", ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT));
-
+        args.putInt("selectedAudioTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO));
+        args.putInt("selectedVideoTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_VIDEO));
+        args.putInt("selectedTextTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT));
         promise.resolve(args);
 
     }
 
-    public void selectAudioTrack(int trackID) {
-        if (ijkVideoView != null)
-            Log.d("SETTING_TRACK", String.valueOf(trackID));
-        ijkVideoView.selectTrack(trackID);
+    /**
+     * Select the audio track for the given ID
+     * @param trackID
+     */
 
+    public void selectAudioTrack(int trackID) {
+        if (mVideoView != null)
+            mVideoView.selectTrack(trackID);
     }
+
+    /**
+     * Select the video track for the given ID
+     * @param trackID
+     */
 
 
     public void selectVideoTrack(int trackID) {
-        if (ijkVideoView != null)
-
-            ijkVideoView.selectTrack(trackID);
-
+        if (mVideoView != null)
+            mVideoView.selectTrack(trackID);
     }
+
+    /**
+     * Deselect the track on a given ID
+     * @param trackID
+     */
 
     public void deselectTrack(int trackID) {
-        if (ijkVideoView != null)
-            ijkVideoView.deSelectTrack(trackID);
+        if (mVideoView != null)
+            mVideoView.deSelectTrack(trackID);
     }
 
+    /**
+     * Select text track for the given ID
+     *
+     * @param trackID
+     */
     public void selectTextTrack(int trackID) {
-        if (ijkVideoView != null)
-
-            ijkVideoView.selectTrack(trackID);
-
+        if (mVideoView != null)
+            mVideoView.selectTrack(trackID);
     }
+
+
 
     public void setSubtitleDisplay(int textSize, String color, String position, String backgroundColor) {
-
-        ijkVideoView.setSubtitleDisplay(getContext(), textSize, position, color, backgroundColor);
-
+        if (mVideoView != null)
+            mVideoView.setSubtitleDisplay(getContext(), textSize, position, color, backgroundColor);
     }
 
     public void setSubtitles(final boolean subtitlesEnabled) {
-
-        ijkVideoView.setSubtitles(subtitlesEnabled);
-
+        if (mVideoView != null)
+            mVideoView.setSubtitles(subtitlesEnabled);
     }
 
-    public void setAudio(final boolean audioEnabled) {
 
-        ijkVideoView.setAudio(audioEnabled);
+
+    public void setAudio(final boolean audioEnabled) {
+        if (mVideoView != null)
+            mVideoView.setAudio(audioEnabled);
 
     }
 
     public void setVideo(final boolean videoEnabled) {
-
-        ijkVideoView.setVideo(videoEnabled);
+        if (mVideoView != null)
+            mVideoView.setVideo(videoEnabled);
 
     }
 
     public void setAudioFocus(final boolean audioFocus) {
-        if (audioFocus) {
-            ijkVideoView.getAudioFocus();
-        } else {
-            ijkVideoView.abandonAudioFocus();
-        }
+        if (mVideoView != null)
+            if (audioFocus) {
+                mVideoView.getAudioFocus();
+            } else {
+                mVideoView.abandonAudioFocus();
+            }
 
     }
 
-    public boolean mPlayInBackground = true;
 
     public void setBackgroundPlay(final boolean playInBackground) {
-        if (ijkVideoView != null) ;
-        mPlayInBackground = playInBackground;
+        if (mVideoView != null)
+            mPlayInBackground = playInBackground;
 
 
     }
 
-
     public void takeSnapshot(final String path, Promise promise) throws IOException {
-        if (ijkVideoView == null) {
+        if (mVideoView == null) {
             promise.reject("Error", "video not loaded yet");
         }
 
-        Bitmap bitmap = ijkVideoView.getBitmap();
+        Bitmap bitmap = mVideoView.getBitmap();
 
         if (bitmap == null) {
             promise.reject("Error", "bitmap is null");
         }
-
 
         File dir = new File(path.replace("file://", ""));
 
@@ -449,20 +480,14 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         }
 
         String fileName = "snapshots-" + UUID.randomUUID().toString() + "." + "jpeg";
-
         String filePath = path + fileName;
         File file = new File(filePath.replace("file://", ""));
-
 
         FileOutputStream fos = null;
         try {
             fos = new FileOutputStream(file);
-
-
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-
             promise.resolve(filePath);
-
 
         } catch (Exception e) {
             Log.d("ERROR", e.getMessage());
@@ -476,9 +501,9 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
 
     public void setSnapshotPath(final String snapshotPath) throws IOException {
-        if (ijkVideoView == null)
+        if (mVideoView == null)
             return;
-        Bitmap bitmap = ijkVideoView.getBitmap();
+        Bitmap bitmap = mVideoView.getBitmap();
         if (bitmap == null)
             return;
         File file = new File(snapshotPath);
@@ -494,7 +519,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     }
 
-
     public void applyModifiers() {
         setPausedModifier(mPaused);
         setMutedModifier(mMuted);
@@ -504,30 +528,45 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     @Override
     public void onEnableStatusChange(AudioEffect effect, boolean enabled) {
 
-        Log.i("STATUS_CHANGE", String.valueOf(effect));
+    }
+
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (!mPlayInBackground) {
+            initializePlayer();
+            setSrc(mVideoSource, mHeaders, mUserAgent);
+        }
 
     }
 
     @Override
     protected void onDetachedFromWindow() {
-        releasePlayer();
+        if (!mPlayInBackground) {
+
+            releasePlayer();
+        }
         super.onDetachedFromWindow();
     }
+
 
     @Override
     public void onCompletion(IMediaPlayer iMediaPlayer) {
         WritableMap event = Arguments.createMap();
-        mEventEmitter.receiveEvent(getId(), Events.EVENT_END.toString(), event);
+        mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_END.toString(), event);
     }
 
     @Override
     public boolean onError(IMediaPlayer iMediaPlayer, int frameworkErr, int implErr) {
+
         WritableMap event = Arguments.createMap();
         WritableMap error = Arguments.createMap();
-        error.putInt(EVENT_PROP_WHAT, frameworkErr);
-        event.putMap(EVENT_PROP_ERROR, error);
-        mEventEmitter.receiveEvent(getId(), Events.EVENT_ERROR.toString(), event);
+        error.putInt(Constants.EVENT_PROP_WHAT, frameworkErr);
+        event.putMap(Constants.EVENT_PROP_ERROR, error);
+        mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_ERROR.toString(), event);
         releasePlayer();
+
         return true;
     }
 
@@ -535,6 +574,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     public boolean onInfo(IMediaPlayer iMediaPlayer, int message, int val) {
 
         switch (message) {
+            case IMediaPlayer.MEDIA_INFO_OPEN_INPUT:
             case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
 
                 setMutedModifier(true);
@@ -549,62 +589,35 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
                 mStalled = true;
                 break;
             case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
-
                 setMutedModifier(false);
 
                 mStalled = false;
                 break;
-            case IjkMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
-
-                if (mPaused) {
-                    setMutedModifier(false);
-                    ijkVideoView.pause();
-
-                } else {
-                    setMutedModifier(false);
-                    WritableMap event = Arguments.createMap();
-                    event.putString("paused", "true");
-                    mEventEmitter.receiveEvent(getId(), Events.EVENT_VIDEO_PLAYING.toString(), event);
-                }
-
-                break;
-            case IjkMediaPlayer.MEDIA_INFO_VIDEO_SEEK_RENDERING_START:
-                Log.d("PAUSED_VIDEO", String.valueOf(mPaused));
-                if (mPaused) {
-                    ijkVideoView.pause();
-                    setMutedModifier(false);
-                    WritableMap event = Arguments.createMap();
-                    event.putString("paused", "true");
-                    mEventEmitter.receiveEvent(getId(), Events.EVENT_PAUSE.toString(), event);
-
-                } else {
-                    setMutedModifier(false);
-                    WritableMap event = Arguments.createMap();
-                    event.putString("paused", "true");
-                    mEventEmitter.receiveEvent(getId(), Events.EVENT_VIDEO_PLAYING.toString(), event);
-                }
-
-                break;
-
             case IjkMediaPlayer.MEDIA_INFO_AUDIO_SEEK_RENDERING_START:
-                if (mPaused) {
-                    setMutedModifier(false);
-                    ijkVideoView.pause();
-                    WritableMap event = Arguments.createMap();
-                    event.putString("paused", "true");
-                    mEventEmitter.receiveEvent(getId(), Events.EVENT_PAUSE.toString(), event);
-                } else {
-                    setMutedModifier(false);
-                    WritableMap event = Arguments.createMap();
-                    event.putString("paused", "true");
-                    mEventEmitter.receiveEvent(getId(), Events.EVENT_VIDEO_PLAYING.toString(), event);
-                }
-
+            case IjkMediaPlayer.MEDIA_INFO_VIDEO_SEEK_RENDERING_START:
+            case IjkMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
+                handlePlayPauseOnVideo();
                 break;
-
         }
 
         return true;
+    }
+
+
+    private void handlePlayPauseOnVideo() {
+        if (mPaused) {
+            setMutedModifier(false);
+            mVideoView.pause();
+            WritableMap event = Arguments.createMap();
+            event.putString("paused", "true");
+            mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_PAUSE.toString(), event);
+        } else {
+            setMutedModifier(false);
+            WritableMap event = Arguments.createMap();
+            event.putString("paused", "false");
+            mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_VIDEO_PLAYING.toString(), event);
+        }
+
     }
 
 
@@ -617,11 +630,9 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     @Override
     public void onTimedText(String subtitle) {
-
         WritableMap event = Arguments.createMap();
         event.putString("text", subtitle);
-
-        mEventEmitter.receiveEvent(getId(), Events.EVENT_TIMED_TEXT.toString(), event);
+        mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_TIMED_TEXT.toString(), event);
 
     }
 
@@ -632,13 +643,12 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         if (mAudioSessionIdListener != null)
             mAudioSessionIdListener.onAudioSessionId(iMediaPlayer);
 
-
         WritableMap event = Arguments.createMap();
         WritableArray videoTracks = new Arguments().createArray();
         WritableArray audioTracks = new Arguments().createArray();
         WritableArray textTracks = new Arguments().createArray();
-
         MediaInfo mediainfo = iMediaPlayer.getMediaInfo();
+
         ArrayList<IjkMediaMeta.IjkStreamMeta> streams = mediainfo.mMeta.mStreams;
 
         event.putString("format", mediainfo.mMeta.mFormat);
@@ -649,19 +659,18 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         event.putString("videoDecoder", String.valueOf(mediainfo.mVideoDecoder));
         event.putString("videoDecoderImpl", String.valueOf(mediainfo.mVideoDecoderImpl));
         event.putInt("audioSessionID", iMediaPlayer.getAudioSessionId());
-        event.putInt("selectedAudioTrack", ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO));
-        event.putInt("selectedVideoTrack", ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_VIDEO));
-        event.putInt("selectedTextTrack", ijkVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT));
+        event.putInt("selectedAudioTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO));
+        event.putInt("selectedVideoTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_VIDEO));
+        event.putInt("selectedTextTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT));
         event.putString("dataSource", iMediaPlayer.getDataSource());
-        event.putBoolean("canGoForward", ijkVideoView.canSeekForward());
-        event.putBoolean("canGoBackward", ijkVideoView.canSeekBackward());
-        event.putBoolean("canPause", ijkVideoView.canPause());
+        event.putBoolean("canGoForward", mVideoView.canSeekForward());
+        event.putBoolean("canGoBackward", mVideoView.canSeekBackward());
+        event.putBoolean("canPause", mVideoView.canPause());
 
 
         for (int i = 0; i < streams.size(); i++) {
 
             WritableMap args = new Arguments().createMap();
-
             IjkMediaMeta.IjkStreamMeta streamMeta = streams.get(i);
 
             args.putInt("track_id", streamMeta.mIndex);
@@ -693,20 +702,15 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
                 event.putMap("extra", args);
             }
 
-
         }
-
-        mVideoTracks = videoTracks;
-        mAudioTracks = audioTracks;
-        mTextTracks = textTracks;
 
         event.putArray("videoTracks", videoTracks);
         event.putArray("audioTracks", audioTracks);
         event.putArray("textTracks", textTracks);
 
-        event.putDouble(EVENT_PROP_DURATION, ijkVideoView.getDuration() / 1000.0);
-        event.putDouble(EVENT_PROP_CURRENT_TIME, ijkVideoView.getCurrentPosition() / 1000.0);
-        mEventEmitter.receiveEvent(getId(), Events.EVENT_LOAD.toString(), event);
+        event.putDouble(Constants.EVENT_PROP_DURATION, mVideoView.getDuration() / 1000.0);
+        event.putDouble(Constants.EVENT_PROP_CURRENT_TIME, mVideoView.getCurrentPosition() / 1000.0);
+        mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_LOAD.toString(), event);
         mLoaded = true;
 
         applyModifiers();
@@ -717,18 +721,18 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         if (!mStalled)
             return;
         WritableMap event = Arguments.createMap();
-        event.putDouble(EVENT_PROP_BUFFERING_PROG, percent / 100);
-        event.putInt("tcpSpeed", (int) ijkVideoView.getTcpSpeed());
-        event.putInt("fileSize", (int) ijkVideoView.getFileSize());
-        event.putString(EVENT_PROP_DATASOURCE, iMediaPlayer.getDataSource());
-        mEventEmitter.receiveEvent(getId(), Events.EVENT_STALLED.toString(), event);
+        event.putDouble(Constants.EVENT_PROP_BUFFERING_PROG, percent / 100);
+        event.putInt("tcpSpeed", (int) mVideoView.getTcpSpeed());
+        event.putInt("fileSize", (int) mVideoView.getFileSize());
+        event.putString(Constants.EVENT_PROP_DATASOURCE, iMediaPlayer.getDataSource());
+        mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_STALLED.toString(), event);
     }
 
     @Override
     public void onHostPause() {
 
         if (!mPlayInBackground) {
-            ijkVideoView.pause();
+            mVideoView.pause();
         }
 
     }
@@ -738,7 +742,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
 
         if (!mPlayInBackground && !mPaused) {
-            Log.d("PAUSING", String.valueOf(mPaused));
             setPausedModifier(false);
 
         }
@@ -750,4 +753,47 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     }
 
+    void setupLayoutHack() {
+
+        Choreographer.getInstance().postFrameCallback(new Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long frameTimeNanos) {
+                manuallyLayoutChildren();
+                getViewTreeObserver().dispatchOnGlobalLayout();
+                Choreographer.getInstance().postFrameCallback(this);
+            }
+        });
+    }
+
+    void manuallyLayoutChildren() {
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            child.measure(MeasureSpec.makeMeasureSpec(getMeasuredWidth(), MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(getMeasuredHeight(), MeasureSpec.EXACTLY));
+            child.layout(0, 0, child.getMeasuredWidth(), child.getMeasuredHeight());
+        }
+    }
+
+
+    private void releasePlayer() {
+        if (mVideoView != null)
+            Task.callInBackground(new Callable<Void>() {
+
+                @Override
+                public Void call() throws Exception {
+                    mVideoView.setOnPreparedListener(null);
+                    mVideoView.setOnErrorListener(null);
+                    mVideoView.setOnCompletionListener(null);
+                    mVideoView.setOnInfoListener(null);
+                    mVideoView.setOnBufferingUpdateListener(null);
+                    mVideoView.setOnTimedTextAvailableListener(null);
+                    mVideoView.stopPlayback();
+                    mProgressUpdateRunnable = null;
+                    removeView(mVideoView);
+                    mVideoView = null;
+                    return null;
+                }
+
+            });
+    }
 }
