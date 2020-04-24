@@ -152,7 +152,8 @@ export default class IJKPlayer extends Component {
 
   render() {
     const source = resolveAssetSource(this.props.source) || {};
-    const { headers, userAgent } = source;
+    const headers = source.headers? source.headers : {};
+    const userAgent = source.userAgent? source.userAgent : '';
 
     let uri = source.uri || '';
     if (uri && uri.match(/^\//)) {
