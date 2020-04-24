@@ -35,52 +35,15 @@ This project is in very early stages and not suggested for production level apps
 | Video Encoders |  H263, H264, H265, MPEG1, MPEG2, MPEG4, MJPEG, VC-1, WMV, RV40, PNG, JPEG, YUV, WEBP, TIFF, VP* |
 | Audio Encoders |  AAC, MP3, NELLYMOSER, AMRNB, AMRWB, WMV1, WMV2, WMV3, OGG, FLAC, DTS, COOK |
 
-## Run the Example
-To run the example app clone the project
+# TODO
 
-    git clone https://github.com/ammarahm-ed/react-native-ijkvideo.git
-
-      
-
-   then run ` yarn or npm install` in the example folder and finally to run the example app:
-       
-   
-    react-native run-android
-
-## Installation
-
-    npm install react-native-ijkvideo --save
-or if you use yarn:
-
-    yarn add react-native-ijkvideo
-
-# Reference
-
-## Props
-
-### `src`
-
-Sets the media source. 
-
-| Type | Required |Platform|
-| ---- | -------- |-------|
-| FILE,RTMP,HTTP,HTTPS,RTSP | Yes |Android, iOS
-
----
-### `seek`
-
-Seek to the specified position represented by seconds.
-
-| Type | Required |Platform|
-| ---- | -------- |-------|
-| number(seconds) | no |Android, iOS
-
-    Example:
-    
-    seek={200} // seek video to 3 minutes & 2 seconds
-
----
-
+- [x]  Android Implementation
+- [ ]  iOS Implementation
+- [ ]  Publish binaries to Cocoapods and Bintray
+- [ ]  Add Typescript Definations
+- [ ]  Create full documentation on now.sh
+- [ ]  Cleanup code
+- [ ]  Create an example
 
 ### MIT Licensed
 
