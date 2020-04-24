@@ -12,7 +12,7 @@ import com.facebook.react.uimanager.SimpleViewManager;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.ViewGroupManager;
 import com.facebook.react.uimanager.annotations.ReactProp;
-import com.github.chadsmith.RCTIJKPlayer.RCTIJKPlayer.Events;
+import com.github.chadsmith.RCTIJKPlayer.Constants.Events;
 
 import java.io.IOException;
 import java.util.Map;
@@ -20,25 +20,6 @@ import java.util.Map;
 public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
 
     private static final String REACT_CLASS = "RCTIJKPlayer";
-
-    public RCTIJKPlayerManager(ReactApplicationContext reactContext) {
-        super();
-    }
-
-    @Override
-    public String getName() {
-        return REACT_CLASS;
-    }
-
-    @Override
-    public RCTIJKPlayer createViewInstance(ThemedReactContext context) {
-        videoView = new RCTIJKPlayer(context);
-        mEqualizer = new Equalizer(videoView.getContext());
-        videoView.setOnAudioSessionIdListener(mEqualizer);
-
-        return videoView;
-
-    }
 
     public static final String PROP_SRC = "src";
     public static final String PROP_SRC_HEADERS = "headers";
@@ -71,19 +52,36 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     private static final String PROP_REVERB_MODE = "reverbMode";
     private static final String PROP_REVERB_ENABLED = "reverbEnabled";
 
-
-
-    private RCTIJKPlayer videoView;
+    private RCTIJKPlayer mRCTIJKPlayer;
     private Equalizer mEqualizer;
+
+    public RCTIJKPlayerManager(ReactApplicationContext reactContext) {
+        super();
+    }
+
+    @Override
+    public String getName() {
+        return REACT_CLASS;
+    }
+
+    @Override
+    public RCTIJKPlayer createViewInstance(ThemedReactContext context) {
+        mRCTIJKPlayer = new RCTIJKPlayer(context);
+        mEqualizer = new Equalizer(mRCTIJKPlayer.getContext());
+        mRCTIJKPlayer.setOnAudioSessionIdListener(mEqualizer);
+
+        return mRCTIJKPlayer;
+
+    }
 
 
     public RCTIJKPlayer getPlayerInstance() { // <-- returns the View instance
-        return videoView;
+        return mRCTIJKPlayer;
     }
 
     public Equalizer getEqualizerInstance() {
         if (mEqualizer == null)
-            mEqualizer = new Equalizer(videoView.getContext());
+            mEqualizer = new Equalizer(mRCTIJKPlayer.getContext());
 
 
         return mEqualizer;
@@ -99,14 +97,20 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
         return builder.build();
     }
 
+
     @ReactProp(name = PROP_SRC)
     public void setSrc(final RCTIJKPlayer mVideoView, @Nullable ReadableMap src) throws IOException {
         String uri = src.getString(PROP_SRC_URI);
         ReadableMap headers = null;
+        String userAgent = "";
         if (src.hasKey(PROP_SRC_HEADERS))
             headers = src.getMap(PROP_SRC_HEADERS);
-        String userAgent = src.getString(PROP_SRC_USER_AGENT);
+
+        if (src.hasKey(PROP_SRC_USER_AGENT))
+        userAgent = src.getString(PROP_SRC_USER_AGENT);
+
         mVideoView.setSrc(uri, headers, userAgent);
+
     }
 
     @ReactProp(name = PROP_MUTED, defaultBoolean = false)
@@ -222,7 +226,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     @ReactProp(name = PROP_EQUALIZER_ENABLED, defaultBoolean = false)
     public void setEqualizerEnabled(final RCTIJKPlayer mVideoView, final boolean equalizerEnabled) {
         if (mEqualizer == null) {
-            mEqualizer = new Equalizer(videoView.getContext());
+            mEqualizer = new Equalizer(mRCTIJKPlayer.getContext());
         }
 
         mEqualizer.setEqualizerEnabled(equalizerEnabled);
@@ -240,7 +244,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     @ReactProp(name = PROP_BASSBOOST_ENABLED, defaultBoolean = false)
     public void setBassBoostEnabled(final RCTIJKPlayer mVideoView, final boolean enabled) {
         if (mEqualizer == null) {
-            mEqualizer = new Equalizer(videoView.getContext());
+            mEqualizer = new Equalizer(mRCTIJKPlayer.getContext());
         }
 
 
@@ -251,7 +255,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     @ReactProp(name = PROP_LOUDNESS_ENABLED, defaultBoolean = false)
     public void setLoudnessEnabled(final RCTIJKPlayer mVideoView, final boolean enabled) {
         if (mEqualizer == null)
-            mEqualizer = new Equalizer(videoView.getContext());
+            mEqualizer = new Equalizer(mRCTIJKPlayer.getContext());
         mEqualizer.setLoudnessEnabled(enabled);
 
     }
@@ -259,7 +263,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     @ReactProp(name = PROP_REVERB_ENABLED, defaultBoolean = false)
     public void setReverbEnabled(final RCTIJKPlayer mVideoView, final boolean enabled) {
         if (mEqualizer == null)
-            mEqualizer = new Equalizer(videoView.getContext());
+            mEqualizer = new Equalizer(mRCTIJKPlayer.getContext());
         //mEqualizer.setReverbEnabled(enabled);
 
     }
@@ -267,7 +271,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     @ReactProp(name = PROP_REVERB_MODE)
     public void setReverbMode(final RCTIJKPlayer mVideoView, final String reverbMode) {
         if (mEqualizer == null)
-            mEqualizer = new Equalizer(videoView.getContext());
+            mEqualizer = new Equalizer(mRCTIJKPlayer.getContext());
         // mEqualizer.setPresetReverbMode(reverbMode);
     }
 
