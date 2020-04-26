@@ -1,8 +1,6 @@
 package com.github.chadsmith.RCTIJKPlayer;
 
 import android.media.audiofx.AudioEffect;
-import android.util.Log;
-
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
@@ -11,10 +9,6 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
-import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.shell.MainReactPackage;
-
-import java.util.ArrayList;
 
 public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
 
@@ -41,19 +35,19 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
             videoView = playerManager.getPlayerInstance();
             mEqualizer = playerManager.getEqualizerInstance();
         }
-}
-
-    @ReactMethod
-    public  void setPan( final float left, final float right) {
-        init();
-        videoView.setStereoPanModifier(left,right);
     }
 
     @ReactMethod
-    public  void takeSnapshot(final String path, Promise promise) {
+    public void setPan(final float left, final float right) {
+        init();
+        videoView.setStereoPanModifier(left, right);
+    }
+
+    @ReactMethod
+    public void takeSnapshot(final String path, Promise promise) {
         init();
         try {
-         videoView.takeSnapshot(path,promise);
+            videoView.takeSnapshot(path, promise);
         } catch (Exception e) {
             promise.reject(e.getMessage());
         }
@@ -61,12 +55,10 @@ public class RCTIJKPlayerModule extends ReactContextBaseJavaModule {
     }
 
 
-
-
     @ReactMethod
     public void seek(final double seekTime, final boolean pauseAfterSeek) {
         init();
-        videoView.setSeekModifier(seekTime,pauseAfterSeek);
+        videoView.setSeekModifier(seekTime, pauseAfterSeek);
     }
 
 

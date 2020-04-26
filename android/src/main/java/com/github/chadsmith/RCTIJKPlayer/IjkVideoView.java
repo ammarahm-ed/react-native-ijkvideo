@@ -19,24 +19,12 @@ package com.github.chadsmith.RCTIJKPlayer;
 
 import android.annotation.TargetApi;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.audiofx.AudioEffect;
-import android.media.audiofx.BassBoost;
-import android.media.audiofx.EnvironmentalReverb;
-import android.media.audiofx.Equalizer;
-import android.media.audiofx.PresetReverb;
 import android.net.Uri;
-import android.net.rtp.AudioStream;
 import android.os.Build;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
@@ -45,24 +33,18 @@ import android.widget.FrameLayout;
 import android.widget.MediaController;
 import android.widget.TextView;
 
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.WritableMap;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
 
 import java.io.IOException;
-
 import java.util.Map;
 
 import tv.danmaku.ijk.media.player.IMediaPlayer;
-import tv.danmaku.ijk.media.player.IjkMediaCodecInfo;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkTimedText;
-import tv.danmaku.ijk.media.player.ffmpeg.FFmpegApi;
-import tv.danmaku.ijk.media.player.misc.ITrackInfo;
-import tv.danmaku.ijk.media.player.misc.IjkMediaFormat;
-import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
 
 public class IjkVideoView extends FrameLayout implements MediaController.MediaPlayerControl {
     // all possible internal states
@@ -992,9 +974,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     @Override
     public int getAudioSessionId() {
-
         return mIjkMediaPlayer.getAudioSessionId();
-
 
     }
 

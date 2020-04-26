@@ -3,12 +3,9 @@ package com.github.chadsmith.RCTIJKPlayer;
 
 import androidx.annotation.Nullable;
 
-import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.common.MapBuilder;
-import com.facebook.react.uimanager.SimpleViewManager;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.ViewGroupManager;
 import com.facebook.react.uimanager.annotations.ReactProp;
@@ -18,8 +15,6 @@ import java.io.IOException;
 import java.util.Map;
 
 public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
-
-    private static final String REACT_CLASS = "RCTIJKPlayer";
 
     public static final String PROP_SRC = "src";
     public static final String PROP_SRC_HEADERS = "headers";
@@ -31,7 +26,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
     public static final String PROP_VOLUME = "volume";
     public static final String PROP_SNAPSHOT_PATH = "snapshotPath";
     public static final String PROP_RESIZE_MODE = "resizeMode";
-
+    private static final String REACT_CLASS = "RCTIJKPlayer";
     private static final String PROP_REPEAT = "repeat";
     private static final String PROP_PROGRESS_UPDATE_INTERVAL = "progressUpdateInterval";
     private static final String PROP_RATE = "rate";
@@ -107,7 +102,7 @@ public class RCTIJKPlayerManager extends ViewGroupManager<RCTIJKPlayer> {
             headers = src.getMap(PROP_SRC_HEADERS);
 
         if (src.hasKey(PROP_SRC_USER_AGENT))
-        userAgent = src.getString(PROP_SRC_USER_AGENT);
+            userAgent = src.getString(PROP_SRC_USER_AGENT);
 
         mVideoView.setSrc(uri, headers, userAgent);
 

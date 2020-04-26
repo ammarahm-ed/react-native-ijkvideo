@@ -2,7 +2,6 @@ package com.github.chadsmith.RCTIJKPlayer;
 
 import android.graphics.Bitmap;
 import android.media.audiofx.AudioEffect;
-
 import android.os.Handler;
 import android.util.Log;
 import android.view.Choreographer;
@@ -41,12 +40,10 @@ import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener, onTimedTextAvailable, AudioEffect.OnEnableStatusChangeListener, IMediaPlayer.OnPreparedListener, IMediaPlayer.OnErrorListener, IMediaPlayer.OnCompletionListener, IMediaPlayer.OnInfoListener, IMediaPlayer.OnBufferingUpdateListener {
 
 
-    private ThemedReactContext themedContext;
-
-    private IjkVideoView mVideoView;
     public RCTEventEmitter mEventEmitter;
-
     public boolean mPlayInBackground = true;
+    private ThemedReactContext themedContext;
+    private IjkVideoView mVideoView;
     private boolean mPaused = false;
     private boolean mMuted = false;
     private float mVolume = 1.0f;
@@ -61,6 +58,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     private float mProgressUpdateInterval = 250;
     private Handler mProgressUpdateHandler = new Handler();
     private Runnable mProgressUpdateRunnable = null;
+    private OnAudioSessionIdRecieved mAudioSessionIdListener;
 
     public RCTIJKPlayer(ThemedReactContext themedReactContext) {
         super(themedReactContext);
@@ -112,7 +110,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         IjkMediaPlayer.native_profileBegin("libijkplayer.so");
     }
 
-
     /**
      * Set event listeners for the video player
      */
@@ -129,7 +126,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             mVideoView.setOnBufferingUpdateListener(this);
         }
     }
-
 
     /**
      * Set the progressUpdateInterval
@@ -154,7 +150,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             };
 
     }
-
 
     /**
      * Set Video Source
@@ -216,7 +211,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             mVideoView.setVideoPath(uriString);
     }
 
-
     /**
      * Play or pause the video
      *
@@ -247,7 +241,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             mVideoView.seekTo((int) (seekTime * 1000));
     }
 
-
     /**
      * Set the resizeMode for the video
      * It can be one of
@@ -265,7 +258,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         if (mVideoView != null)
             mVideoView.setVideoAspect(resizeMode);
     }
-
 
     /**
      * Mute the audio
@@ -297,7 +289,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
         }
     }
-
 
     /**
      * Change audio balance between left and right Channels
@@ -349,7 +340,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         mProgressUpdateRunnable = null;
         setProgressUpdateRunnable();
     }
-
 
     /**
      * Get the current selected track for audio, video and subtitle
@@ -414,7 +404,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         mVideoView.selectTrack(trackID);
     }
 
-
     public void setSubtitleDisplay(int textSize, String color, String position, String backgroundColor) {
         if (mVideoView == null) return;
         mVideoView.setSubtitleDisplay(getContext(), textSize, position, color, backgroundColor);
@@ -424,7 +413,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         if (mVideoView == null) return;
         mVideoView.setSubtitles(subtitlesEnabled);
     }
-
 
     public void setAudio(final boolean audioEnabled) {
         if (mVideoView == null) return;
@@ -446,7 +434,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             mVideoView.abandonAudioFocus();
         }
     }
-
 
     public void setBackgroundPlay(final boolean playInBackground) {
         if (mVideoView == null) return;
@@ -492,7 +479,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         }
     }
 
-
     public void setSnapshotPath(final String snapshotPath) throws IOException {
         if (mVideoView == null) return;
         Bitmap bitmap = mVideoView.getBitmap();
@@ -516,12 +502,10 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         setMutedModifier(mMuted);
     }
 
-
     @Override
     public void onEnableStatusChange(AudioEffect effect, boolean enabled) {
 
     }
-
 
     @Override
     protected void onAttachedToWindow() {
@@ -537,7 +521,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         super.onDetachedFromWindow();
         releasePlayer();
     }
-
 
     @Override
     public void onCompletion(IMediaPlayer iMediaPlayer) {
@@ -590,7 +573,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         return true;
     }
 
-
     private void handlePlayPauseOnVideo() {
         if (mPaused) {
             setMutedModifier(false);
@@ -606,9 +588,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         }
 
     }
-
-
-    private OnAudioSessionIdRecieved mAudioSessionIdListener;
 
     public void setOnAudioSessionIdListener(OnAudioSessionIdRecieved audioSessionIdListener) {
         mAudioSessionIdListener = audioSessionIdListener;
