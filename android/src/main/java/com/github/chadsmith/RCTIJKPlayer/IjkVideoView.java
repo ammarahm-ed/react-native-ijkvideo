@@ -65,12 +65,6 @@ import tv.danmaku.ijk.media.player.misc.IjkMediaFormat;
 import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
 
 public class IjkVideoView extends FrameLayout implements MediaController.MediaPlayerControl {
-    private String TAG = "IjkVideoView";
-    // settable by the client
-    private Uri mUri;
-    private Map<String, String> mHeaders;
-    private String mUserAgent;
-
     // all possible internal states
     private static final int STATE_ERROR = -1;
     private static final int STATE_IDLE = 0;
@@ -79,7 +73,18 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     private static final int STATE_PLAYING = 3;
     private static final int STATE_PAUSED = 4;
     private static final int STATE_PLAYBACK_COMPLETED = 5;
+    public RCTEventEmitter mEventEmitter;
+    AudioManager.OnAudioFocusChangeListener onAudioFocusChange = new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int focusChange) {
 
+        }
+    };
+    private String TAG = "IjkVideoView";
+    // settable by the client
+    private Uri mUri;
+    private Map<String, String> mHeaders;
+    private String mUserAgent;
     // mCurrentState is a VideoView object's current state.
     // mTargetState is the state that a method caller intends to reach.
     // For instance, regardless the VideoView object's current state,
@@ -87,13 +92,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     // of STATE_PAUSED.
     private int mCurrentState = STATE_IDLE;
     private int mTargetState = STATE_IDLE;
-
     // All the stuff we need for playing and showing a video
     private IRenderView.ISurfaceHolder mSurfaceHolder = null;
     private IMediaPlayer mMediaPlayer = null;
     // private int         mAudioSession;
     private IjkMediaPlayer mIjkMediaPlayer = null;
-
     private int mVideoWidth;
     private int mVideoHeight;
     private int mSurfaceWidth;
@@ -113,11 +116,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     private boolean mVideoDisabled = false;
     private boolean mAudioDisabled = false;
     private boolean mSoundtouch = true;
-
     private int mAudioSessionId = -1;
-    private boolean mBackgroundPlayEnabled = false;
-
-    private TextureRenderView renderView = new TextureRenderView(getContext());
 
 
     /**
@@ -127,7 +126,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     /** Subtitle rendering widget overlaid on top of the video. */
     //private RenderingWidget mSubtitleWidget;
-
+    private boolean mBackgroundPlayEnabled = false;
+    private TextureRenderView renderView = new TextureRenderView(getContext());
     /**
      * Listener for changes to subtitle data, used to redraw when needed.
      */
@@ -137,14 +137,250 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     private IRenderView mRenderView;
     private int mVideoSarNum;
     private int mVideoSarDen;
-
     private long mPrepareStartTime = 0;
     private long mPrepareEndTime = 0;
-
     private long mSeekStartTime = 0;
-    private long mSeekEndTime = 0;
+    IMediaPlayer.OnPreparedListener mPreparedListener = new IMediaPlayer.OnPreparedListener() {
+        public void onPrepared(IMediaPlayer mp) {
+            mPrepareEndTime = System.currentTimeMillis();
+            mCurrentState = STATE_PREPARED;
 
+            // Get the capabilities of the player for this stream
+            // REMOVED: Metadata
+
+            if (mOnPreparedListener != null) {
+                mOnPreparedListener.onPrepared(mMediaPlayer);
+            }
+
+            mVideoWidth = mp.getVideoWidth();
+            mVideoHeight = mp.getVideoHeight();
+            mAudioSessionId = mIjkMediaPlayer.getAudioSessionId();
+
+            int seekToPosition = mSeekWhenPrepared;  // mSeekWhenPrepared may be changed after seekTo() call
+            if (seekToPosition != 0) {
+                seekTo(seekToPosition);
+            }
+            if (mVideoWidth != 0 && mVideoHeight != 0) {
+                //Log.i("@@@@", "video size: " + mVideoWidth +"/"+ mVideoHeight);
+                // REMOVED: getHolder().setFixedSize(mVideoWidth, mVideoHeight);
+
+                if (mRenderView != null) {
+                    mRenderView.setVideoSampleAspectRatio(mVideoSarNum, mVideoSarDen);
+                    mRenderView.setVideoSize(mVideoWidth, mVideoHeight);
+
+
+                    if (!mRenderView.shouldWaitForResize() || mSurfaceWidth == mVideoWidth && mSurfaceHeight == mVideoHeight) {
+                        // We didn't actually change the size (it was already at the size
+                        // we need), so we won't get a "surface changed" callback, so
+                        // start the video here instead of in the callback.
+                        if (mTargetState == STATE_PLAYING) {
+                            start();
+                        }
+                    }
+                }
+            } else {
+                // We don't know the video size yet, but should start anyway.
+                // The video size might be reported to us later.
+
+                if (mTargetState == STATE_PLAYING) {
+                    start();
+                }
+            }
+        }
+    };
+    private long mSeekEndTime = 0;
     private TextView subtitleDisplay;
+    private IMediaPlayer.OnCompletionListener mCompletionListener =
+            new IMediaPlayer.OnCompletionListener() {
+                public void onCompletion(IMediaPlayer mp) {
+                    mCurrentState = STATE_PLAYBACK_COMPLETED;
+                    mTargetState = STATE_PLAYBACK_COMPLETED;
+                    if (mOnCompletionListener != null) {
+                        mOnCompletionListener.onCompletion(mMediaPlayer);
+
+                        initVideoView(getContext());
+                    }
+                }
+            };
+    private IMediaPlayer.OnInfoListener mInfoListener =
+            new IMediaPlayer.OnInfoListener() {
+                public boolean onInfo(IMediaPlayer mp, int message, int val) {
+                    if (mOnInfoListener != null) {
+                        mOnInfoListener.onInfo(mp, message, val);
+                    }
+
+                    switch (message) {
+                        case IMediaPlayer.MEDIA_INFO_VIDEO_TRACK_LAGGING:
+                            Log.d(TAG, "MEDIA_INFO_VIDEO_TRACK_LAGGING:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
+                            Log.d(TAG, "MEDIA_INFO_VIDEO_RENDERING_START:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
+                            Log.d(TAG, "MEDIA_INFO_BUFFERING_START:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
+                            Log.d(TAG, "MEDIA_INFO_BUFFERING_END:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_NETWORK_BANDWIDTH:
+                            Log.d(TAG, "MEDIA_INFO_NETWORK_BANDWIDTH: " + val);
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_BAD_INTERLEAVING:
+                            Log.d(TAG, "MEDIA_INFO_BAD_INTERLEAVING:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_NOT_SEEKABLE:
+                            Log.d(TAG, "MEDIA_INFO_NOT_SEEKABLE:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_METADATA_UPDATE:
+                            Log.d(TAG, "MEDIA_INFO_METADATA_UPDATE:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_UNSUPPORTED_SUBTITLE:
+                            Log.d(TAG, "MEDIA_INFO_UNSUPPORTED_SUBTITLE:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_SUBTITLE_TIMED_OUT:
+                            Log.d(TAG, "MEDIA_INFO_SUBTITLE_TIMED_OUT:");
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_VIDEO_ROTATION_CHANGED:
+                            mVideoRotationDegree = val;
+                            Log.d(TAG, "MEDIA_INFO_VIDEO_ROTATION_CHANGED: " + val);
+                            if (mRenderView != null)
+                                mRenderView.setVideoRotation(val);
+                            break;
+
+                        case IMediaPlayer.MEDIA_INFO_AUDIO_RENDERING_START:
+                            Log.d(TAG, "MEDIA_INFO_AUDIO_RENDERING_START:");
+                            mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+
+                            Log.d("AUDIO_SESSION_ID", String.valueOf(mMediaPlayer.getAudioSessionId()));
+
+                            break;
+                    }
+                    return true;
+                }
+            };
+    private IMediaPlayer.OnErrorListener mErrorListener =
+            new IMediaPlayer.OnErrorListener() {
+                public boolean onError(IMediaPlayer mp, int framework_err, int impl_err) {
+                    Log.d(TAG, "Error: " + framework_err + "," + impl_err);
+                    mCurrentState = STATE_ERROR;
+                    mTargetState = STATE_ERROR;
+
+                    /* If an error handler has been supplied, use it and finish. */
+                    if (mOnErrorListener != null) {
+                        if (mOnErrorListener.onError(mMediaPlayer, framework_err, impl_err)) {
+                            return true;
+                        }
+                    }
+                    return true;
+                }
+            };
+    private IMediaPlayer.OnBufferingUpdateListener mBufferingUpdateListener =
+            new IMediaPlayer.OnBufferingUpdateListener() {
+                public void onBufferingUpdate(IMediaPlayer mp, int percent) {
+                    if (mOnBufferingUpdateListener != null)
+                        mOnBufferingUpdateListener.onBufferingUpdate(mp, percent);
+                    mCurrentBufferPercentage = percent;
+                    Log.i("SPEED_BUFFER", String.valueOf(mIjkMediaPlayer.getTcpSpeed() / 1000));
+                }
+            };
+    private IMediaPlayer.OnSeekCompleteListener mSeekCompleteListener = new IMediaPlayer.OnSeekCompleteListener() {
+
+        @Override
+        public void onSeekComplete(IMediaPlayer mp) {
+            Log.i("TEXT", "HELLOOOOO");
+            mSeekEndTime = System.currentTimeMillis();
+            if (!mMediaPlayer.isPlaying())
+                start();
+        }
+    };
+    private ThemedReactContext reactContext;
+    private int id;
+    private onTimedTextAvailable mOnTimedTextAvailable;
+    private IMediaPlayer.OnTimedTextListener mOnTimedTextListener = new IMediaPlayer.OnTimedTextListener() {
+
+
+        @Override
+        public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
+
+            if (text != null) {
+
+                if (mOnTimedTextAvailable != null)
+                    mOnTimedTextAvailable.onTimedText(text.getText());
+
+            }
+        }
+
+    };
+    private int mCurrentAspectRatio = IRenderView.AR_CONTAIN;
+    IMediaPlayer.OnVideoSizeChangedListener mSizeChangedListener =
+            new IMediaPlayer.OnVideoSizeChangedListener() {
+                public void onVideoSizeChanged(IMediaPlayer mp, int width, int height, int sarNum, int sarDen) {
+                    mVideoWidth = mp.getVideoWidth();
+                    mVideoHeight = mp.getVideoHeight();
+                    mVideoSarNum = mp.getVideoSarNum();
+                    mVideoSarDen = mp.getVideoSarDen();
+                    if (mVideoWidth != 0 && mVideoHeight != 0) {
+
+                        if (mRenderView != null) {
+                            mRenderView.setVideoSize(mVideoWidth, mVideoHeight);
+                            mRenderView.setVideoSampleAspectRatio(mVideoSarNum, mVideoSarDen);
+                            mRenderView.setAspectRatio(mCurrentAspectRatio);
+                        }
+                        requestLayout();
+                    }
+                }
+            };
+    IRenderView.IRenderCallback mSHCallback = new IRenderView.IRenderCallback() {
+        @Override
+        public void onSurfaceChanged(@NonNull IRenderView.ISurfaceHolder holder, int format, int w, int h) {
+            if (holder.getRenderView() != mRenderView) {
+                Log.e(TAG, "onSurfaceChanged: unmatched render callback\n");
+                return;
+            }
+
+            mSurfaceWidth = w;
+            mSurfaceHeight = h;
+            boolean isValidState = (mTargetState == STATE_PLAYING);
+            boolean hasValidSize = !mRenderView.shouldWaitForResize() || (mVideoWidth == w && mVideoHeight == h);
+            if (mMediaPlayer != null && isValidState && hasValidSize) {
+                if (mSeekWhenPrepared != 0) {
+                    seekTo(mSeekWhenPrepared);
+                }
+                start();
+            }
+        }
+
+        @Override
+        public void onSurfaceCreated(@NonNull IRenderView.ISurfaceHolder holder, int width, int height) {
+            if (holder.getRenderView() != mRenderView) {
+                Log.e(TAG, "onSurfaceCreated: unmatched render callback\n");
+                return;
+            }
+
+            mSurfaceHolder = holder;
+            if (mMediaPlayer != null)
+                bindSurfaceHolder(mMediaPlayer, holder);
+            else
+                openVideo();
+        }
+
+        @Override
+        public void onSurfaceDestroyed(@NonNull IRenderView.ISurfaceHolder holder) {
+            if (holder.getRenderView() != mRenderView) {
+                Log.e(TAG, "onSurfaceDestroyed: unmatched render callback\n");
+                return;
+            }
+
+            // after we return from this we can't use the surface any more
+            mSurfaceHolder = null;
+            // REMOVED: if (mMediaController != null) mMediaController.hide();
+            // REMOVED: release(true);
+            releaseWithoutStop();
+        }
+    };
+    private int mMaxFpsLimit = 60;
+    private boolean mAutoPlay = false;
+
 
     public IjkVideoView(Context context) {
         super(context);
@@ -157,21 +393,18 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         initVideoView(context);
     }
 
+
     public IjkVideoView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         initVideoView(context);
     }
+
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public IjkVideoView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         initVideoView(context);
     }
-
-    // REMOVED: onMeasure
-    // REMOVED: onInitializeAccessibilityEvent
-    // REMOVED: onInitializeAccessibilityNodeInfo
-    // REMOVED: resolveAdjustedSize
 
     private void initVideoView(Context context) {
         mAppContext = context.getApplicationContext();
@@ -181,13 +414,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
 
         setRenderView(renderView);
-
-        // REMOVED: getHolder().addCallback(mSHCallback);
-        // REMOVED: getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        requestFocus();
-        // REMOVED: mPendingSubtitleTracks = new Vector<Pair<InputStream, MediaFormat>>();
         mCurrentState = STATE_IDLE;
         mTargetState = STATE_IDLE;
 
@@ -199,7 +425,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
                 Gravity.BOTTOM);
         addView(subtitleDisplay, layoutParams_txt);
     }
-
 
     public void setRenderView(IRenderView renderView) {
         if (mRenderView != null) {
@@ -229,7 +454,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         mRenderView.setVideoRotation(mVideoRotationDegree);
 
     }
-
 
     /**
      * Changes the style of subtitle display
@@ -282,6 +506,9 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     }
 
+    // REMOVED: addSubtitleSource
+    // REMOVED: mPendingSubtitleTracks
+
     public void setSubtitles(final boolean subtitlesEnabled) {
 
         mSubtitlesEnabled = subtitlesEnabled;
@@ -294,7 +521,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     public long getFileSize() {
         return mIjkMediaPlayer.getFileSize();
     }
-
 
     /**
      * Change the aspect ratio of the video.
@@ -367,11 +593,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
      */
 
     public void getAudioFocus() {
-
-
         AudioManager am = (AudioManager) mAppContext.getSystemService(Context.AUDIO_SERVICE);
         am.requestAudioFocus(onAudioFocusChange, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-
     }
 
     /**
@@ -380,12 +603,10 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
 
     public void abandonAudioFocus() {
-
         AudioManager am = (AudioManager) mAppContext.getSystemService(Context.AUDIO_SERVICE);
         am.abandonAudioFocus(onAudioFocusChange);
 
     }
-
 
     /**
      * Track selector
@@ -397,48 +618,29 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
 
     public void selectTrack(int trackID) {
-        if (mMediaPlayer != null)
-
-
-
-            Log.d("SETTING_TRACK", String.valueOf(mIjkMediaPlayer.getCurrentPosition()));
-            mIjkMediaPlayer.selectTrack(trackID);
-
-
-
-         mIjkMediaPlayer.seekTo(mIjkMediaPlayer.getCurrentPosition() );
-
+        if (mMediaPlayer == null) return;
+        mIjkMediaPlayer.selectTrack(trackID);
+        mIjkMediaPlayer.seekTo(mIjkMediaPlayer.getCurrentPosition());
     }
 
     public void deSelectTrack(int trackID) {
         if (mMediaPlayer != null)
             Log.d("SETTING_TRACK", String.valueOf(trackID));
-            mIjkMediaPlayer.deselectTrack(trackID);
+        mIjkMediaPlayer.deselectTrack(trackID);
 
-         mIjkMediaPlayer.seekTo(mIjkMediaPlayer.getCurrentPosition());
+        mIjkMediaPlayer.seekTo(mIjkMediaPlayer.getCurrentPosition());
 
     }
 
-
     public void setVideo(final boolean videoDisabled) {
-        if (mMediaPlayer != null)
-            mVideoDisabled = videoDisabled;
+        if (mMediaPlayer == null) return;
+        mVideoDisabled = videoDisabled;
     }
 
     public void setAudio(final boolean audioDisabled) {
-        if (mMediaPlayer != null)
-            mAudioDisabled = audioDisabled;
+        if (mMediaPlayer == null) return;
+        mAudioDisabled = audioDisabled;
     }
-
-
-    AudioManager.OnAudioFocusChangeListener onAudioFocusChange = new AudioManager.OnAudioFocusChangeListener() {
-        @Override
-        public void onAudioFocusChange(int focusChange) {
-
-            Log.i("AUDIO_SESSION_IDDDDDDDD", String.valueOf(mIjkMediaPlayer.getAudioSessionId()));
-        }
-    };
-
 
     /**
      * Sets video path.
@@ -495,14 +697,10 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         invalidate();
     }
 
-    // REMOVED: addSubtitleSource
-    // REMOVED: mPendingSubtitleTracks
-
     public void stopPlayback() {
         if (mMediaPlayer != null) {
             mMediaPlayer.stop();
             mMediaPlayer.release();
-
             mMediaPlayer = null;
             mCurrentState = STATE_IDLE;
             mTargetState = STATE_IDLE;
@@ -589,192 +787,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
     }
 
-
-    IMediaPlayer.OnVideoSizeChangedListener mSizeChangedListener =
-            new IMediaPlayer.OnVideoSizeChangedListener() {
-                public void onVideoSizeChanged(IMediaPlayer mp, int width, int height, int sarNum, int sarDen) {
-                    mVideoWidth = mp.getVideoWidth();
-                    mVideoHeight = mp.getVideoHeight();
-                    mVideoSarNum = mp.getVideoSarNum();
-                    mVideoSarDen = mp.getVideoSarDen();
-                    if (mVideoWidth != 0 && mVideoHeight != 0) {
-
-                        if (mRenderView != null) {
-                            mRenderView.setVideoSize(mVideoWidth, mVideoHeight);
-                            mRenderView.setVideoSampleAspectRatio(mVideoSarNum, mVideoSarDen);
-                            mRenderView.setAspectRatio(mCurrentAspectRatio);
-                        }
-                        requestLayout();
-                    }
-                }
-            };
-
-    IMediaPlayer.OnPreparedListener mPreparedListener = new IMediaPlayer.OnPreparedListener() {
-        public void onPrepared(IMediaPlayer mp) {
-            mPrepareEndTime = System.currentTimeMillis();
-            mCurrentState = STATE_PREPARED;
-
-            // Get the capabilities of the player for this stream
-            // REMOVED: Metadata
-
-            if (mOnPreparedListener != null) {
-                mOnPreparedListener.onPrepared(mMediaPlayer);
-            }
-
-            mVideoWidth = mp.getVideoWidth();
-            mVideoHeight = mp.getVideoHeight();
-            mAudioSessionId = mIjkMediaPlayer.getAudioSessionId();
-
-            int seekToPosition = mSeekWhenPrepared;  // mSeekWhenPrepared may be changed after seekTo() call
-            if (seekToPosition != 0) {
-                seekTo(seekToPosition);
-            }
-            if (mVideoWidth != 0 && mVideoHeight != 0) {
-                //Log.i("@@@@", "video size: " + mVideoWidth +"/"+ mVideoHeight);
-                // REMOVED: getHolder().setFixedSize(mVideoWidth, mVideoHeight);
-
-                if (mRenderView != null) {
-                    mRenderView.setVideoSampleAspectRatio(mVideoSarNum, mVideoSarDen);
-                    mRenderView.setVideoSize(mVideoWidth, mVideoHeight);
-
-
-                    if (!mRenderView.shouldWaitForResize() || mSurfaceWidth == mVideoWidth && mSurfaceHeight == mVideoHeight) {
-                        // We didn't actually change the size (it was already at the size
-                        // we need), so we won't get a "surface changed" callback, so
-                        // start the video here instead of in the callback.
-                        if (mTargetState == STATE_PLAYING) {
-                            start();
-                        }
-                    }
-                }
-            } else {
-                // We don't know the video size yet, but should start anyway.
-                // The video size might be reported to us later.
-
-                if (mTargetState == STATE_PLAYING) {
-                    start();
-
-
-                }
-            }
-        }
-    };
-
-    private IMediaPlayer.OnCompletionListener mCompletionListener =
-            new IMediaPlayer.OnCompletionListener() {
-                public void onCompletion(IMediaPlayer mp) {
-                    mCurrentState = STATE_PLAYBACK_COMPLETED;
-                    mTargetState = STATE_PLAYBACK_COMPLETED;
-                    if (mOnCompletionListener != null) {
-                        mOnCompletionListener.onCompletion(mMediaPlayer);
-
-                        initVideoView(getContext());
-                    }
-                }
-            };
-
-
-    private IMediaPlayer.OnInfoListener mInfoListener =
-            new IMediaPlayer.OnInfoListener() {
-                public boolean onInfo(IMediaPlayer mp, int message, int val) {
-                    if (mOnInfoListener != null) {
-                        mOnInfoListener.onInfo(mp, message, val);
-                    }
-
-                    switch (message) {
-                        case IMediaPlayer.MEDIA_INFO_VIDEO_TRACK_LAGGING:
-                            Log.d(TAG, "MEDIA_INFO_VIDEO_TRACK_LAGGING:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
-                            Log.d(TAG, "MEDIA_INFO_VIDEO_RENDERING_START:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
-                            Log.d(TAG, "MEDIA_INFO_BUFFERING_START:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
-                            Log.d(TAG, "MEDIA_INFO_BUFFERING_END:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_NETWORK_BANDWIDTH:
-                            Log.d(TAG, "MEDIA_INFO_NETWORK_BANDWIDTH: " + val);
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_BAD_INTERLEAVING:
-                            Log.d(TAG, "MEDIA_INFO_BAD_INTERLEAVING:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_NOT_SEEKABLE:
-                            Log.d(TAG, "MEDIA_INFO_NOT_SEEKABLE:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_METADATA_UPDATE:
-                            Log.d(TAG, "MEDIA_INFO_METADATA_UPDATE:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_UNSUPPORTED_SUBTITLE:
-                            Log.d(TAG, "MEDIA_INFO_UNSUPPORTED_SUBTITLE:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_SUBTITLE_TIMED_OUT:
-                            Log.d(TAG, "MEDIA_INFO_SUBTITLE_TIMED_OUT:");
-                            break;
-                        case IMediaPlayer.MEDIA_INFO_VIDEO_ROTATION_CHANGED:
-                            mVideoRotationDegree = val;
-                            Log.d(TAG, "MEDIA_INFO_VIDEO_ROTATION_CHANGED: " + val);
-                            if (mRenderView != null)
-                                mRenderView.setVideoRotation(val);
-                            break;
-
-                        case IMediaPlayer.MEDIA_INFO_AUDIO_RENDERING_START:
-                            Log.d(TAG, "MEDIA_INFO_AUDIO_RENDERING_START:");
-                            mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-
-                            Log.d("AUDIO_SESSION_ID", String.valueOf(mMediaPlayer.getAudioSessionId()));
-
-                            break;
-                    }
-                    return true;
-                }
-            };
-
-    private IMediaPlayer.OnErrorListener mErrorListener =
-            new IMediaPlayer.OnErrorListener() {
-                public boolean onError(IMediaPlayer mp, int framework_err, int impl_err) {
-                    Log.d(TAG, "Error: " + framework_err + "," + impl_err);
-                    mCurrentState = STATE_ERROR;
-                    mTargetState = STATE_ERROR;
-
-                    /* If an error handler has been supplied, use it and finish. */
-                    if (mOnErrorListener != null) {
-                        if (mOnErrorListener.onError(mMediaPlayer, framework_err, impl_err)) {
-                            return true;
-                        }
-                    }
-                    return true;
-                }
-            };
-
-    private IMediaPlayer.OnBufferingUpdateListener mBufferingUpdateListener =
-            new IMediaPlayer.OnBufferingUpdateListener() {
-                public void onBufferingUpdate(IMediaPlayer mp, int percent) {
-                    if (mOnBufferingUpdateListener != null)
-                        mOnBufferingUpdateListener.onBufferingUpdate(mp, percent);
-                    mCurrentBufferPercentage = percent;
-                    Log.i("SPEED_BUFFER", String.valueOf(mIjkMediaPlayer.getTcpSpeed() / 1000));
-                }
-            };
-
-    private IMediaPlayer.OnSeekCompleteListener mSeekCompleteListener = new IMediaPlayer.OnSeekCompleteListener() {
-
-        @Override
-        public void onSeekComplete(IMediaPlayer mp) {
-            Log.i("TEXT", "HELLOOOOO");
-            mSeekEndTime = System.currentTimeMillis();
-            if (!mMediaPlayer.isPlaying())
-                start();
-        }
-    };
-
-
-    private ThemedReactContext reactContext;
-
-    public RCTEventEmitter mEventEmitter;
-    private int id;
-
     public void setContext(ThemedReactContext trc, int i) {
 
         reactContext = trc;
@@ -782,36 +794,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         mEventEmitter = reactContext.getJSModule(RCTEventEmitter.class);
     }
 
-
-    private onTimedTextAvailable mOnTimedTextAvailable;
-
     public void setOnTimedTextAvailableListener(onTimedTextAvailable mOnTimedText) {
 
         mOnTimedTextAvailable = mOnTimedText;
 
     }
-
-
-    private IMediaPlayer.OnTimedTextListener mOnTimedTextListener = new IMediaPlayer.OnTimedTextListener() {
-
-
-        @Override
-        public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
-
-            Log.i("SUBTITLE_LOAD_ED", String.valueOf(text.getText()));
-            if (text != null) {
-
-                Log.d("SUBTITLE", text.getText());
-                if (mOnTimedTextAvailable != null)
-                    mOnTimedTextAvailable.onTimedText(text.getText());
-
-                //subtitleDisplay.setText(text.getText());
-
-            }
-        }
-
-    };
-
 
     /**
      * Register a callback to be invoked when the media file
@@ -866,8 +853,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         mOnBufferingUpdateListener = l;
     }
 
-
-    // REMOVED: mSHCallback
     private void bindSurfaceHolder(IMediaPlayer mp, IRenderView.ISurfaceHolder holder) {
         if (mp == null)
             return;
@@ -881,56 +866,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         holder.bindToMediaPlayer(mp);
     }
 
-    IRenderView.IRenderCallback mSHCallback = new IRenderView.IRenderCallback() {
-        @Override
-        public void onSurfaceChanged(@NonNull IRenderView.ISurfaceHolder holder, int format, int w, int h) {
-            if (holder.getRenderView() != mRenderView) {
-                Log.e(TAG, "onSurfaceChanged: unmatched render callback\n");
-                return;
-            }
-
-            mSurfaceWidth = w;
-            mSurfaceHeight = h;
-            boolean isValidState = (mTargetState == STATE_PLAYING);
-            boolean hasValidSize = !mRenderView.shouldWaitForResize() || (mVideoWidth == w && mVideoHeight == h);
-            if (mMediaPlayer != null && isValidState && hasValidSize) {
-                if (mSeekWhenPrepared != 0) {
-                    seekTo(mSeekWhenPrepared);
-                }
-                start();
-            }
-        }
-
-        @Override
-        public void onSurfaceCreated(@NonNull IRenderView.ISurfaceHolder holder, int width, int height) {
-            if (holder.getRenderView() != mRenderView) {
-                Log.e(TAG, "onSurfaceCreated: unmatched render callback\n");
-                return;
-            }
-
-            mSurfaceHolder = holder;
-            if (mMediaPlayer != null)
-                bindSurfaceHolder(mMediaPlayer, holder);
-            else
-                openVideo();
-        }
-
-        @Override
-        public void onSurfaceDestroyed(@NonNull IRenderView.ISurfaceHolder holder) {
-            if (holder.getRenderView() != mRenderView) {
-                Log.e(TAG, "onSurfaceDestroyed: unmatched render callback\n");
-                return;
-            }
-
-            // after we return from this we can't use the surface any more
-            mSurfaceHolder = null;
-            // REMOVED: if (mMediaController != null) mMediaController.hide();
-            // REMOVED: release(true);
-            releaseWithoutStop();
-        }
-    };
-
-
     public void releaseWithoutStop() {
         if (mMediaPlayer != null)
             mMediaPlayer.setDisplay(null);
@@ -941,21 +876,18 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
      */
     public void release(boolean cleartargetstate) {
         if (mMediaPlayer != null) {
+            mMediaPlayer.stop();
             mMediaPlayer.reset();
             mMediaPlayer.release();
             mAudioSessionId = -1;
             mMediaPlayer = null;
-            // REMOVED: mPendingSubtitleTracks.clear();
             mCurrentState = STATE_IDLE;
             if (cleartargetstate) {
                 mTargetState = STATE_IDLE;
             }
             abandonAudioFocus();
-
-
         }
     }
-
 
     @Override
     public void start() {
@@ -1066,10 +998,6 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     }
 
-    private int mCurrentAspectRatio = IRenderView.AR_CONTAIN;
-    private int mMaxFpsLimit = 60;
-    private boolean mAutoPlay = false;
-
     public IjkMediaPlayer createPlayer() {
         IjkMediaPlayer ijkMediaPlayer = new IjkMediaPlayer();
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1);
@@ -1102,10 +1030,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_CODEC, "skip_loop_filter", 48);
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-sync", 1);
         ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "accurate-seek", 1);
-
-
-
-            ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "soundtouch", 1);
+        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "soundtouch", 1);
 
         if (mAudioDisabled)
             ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "an", 1);
@@ -1116,7 +1041,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         }
 
 
-       ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "subtitle", 1);
+        ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "subtitle", 1);
 
         if (mUserAgent != null)
             ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "user_agent", mUserAgent);
