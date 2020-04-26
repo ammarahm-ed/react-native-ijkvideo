@@ -76,14 +76,13 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     /**
      * Initialize the player
-     *
+     * <p>
      * Attach VideoView
      * Add Progress update event
      * Attach all event listeners for the video player
      */
 
     public void initializePlayer() {
-
         setVideoView();
         setProgressUpdateRunnable();
         setEventListeners();
@@ -95,7 +94,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     private void setVideoView() {
         if (themedContext != null) {
-
             mVideoView = new IjkVideoView(themedContext);
             addView(mVideoView);
             mVideoView.setContext(themedContext, getId());
@@ -130,7 +128,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             mVideoView.setOnInfoListener(this);
             mVideoView.setOnBufferingUpdateListener(this);
         }
-
     }
 
 
@@ -221,8 +218,8 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
 
     /**
-     *
      * Play or pause the video
+     *
      * @param paused pause video if true
      */
 
@@ -231,20 +228,17 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         mPaused = paused;
         if (mVideoView == null) return;
         if (mPaused) {
-            if (mVideoView.isPlaying()) {
-                mVideoView.pause();
-            }
+            mVideoView.pause();
         } else {
-            if (!mVideoView.isPlaying()) {
-                mVideoView.start();
-                mProgressUpdateHandler.post(mProgressUpdateRunnable);
-            }
+            mVideoView.start();
+            mProgressUpdateHandler.post(mProgressUpdateRunnable);
         }
     }
 
     /**
      * Seek the video to given time in ms
-     * @param seekTime  seek time in ms
+     *
+     * @param seekTime       seek time in ms
      * @param pauseAfterSeek Should the video pause after seek has completed
      */
 
@@ -265,7 +259,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
      * ORIGINAL
      *
      * @param resizeMode type of resizeMode for the video
-     *
      */
 
     public void setResizeModifier(final String resizeMode) {
@@ -276,7 +269,8 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     /**
      * Mute the audio
-      * @param muted
+     *
+     * @param muted
      */
 
     public void setMutedModifier(final boolean muted) {
@@ -291,6 +285,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     /**
      * Set the volume of the video, independant from Android system volume.
+     *
      * @param volume
      */
 
@@ -307,18 +302,15 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     /**
      * Change audio balance between left and right Channels
      *
-     * @param left left audio channel volume level
+     * @param left  left audio channel volume level
      * @param right right audio channel volume level
-     *
      */
 
 
-
     public void setStereoPanModifier(final float left, final float right) {
-        if (mVideoView != null) {
-            if (left > 1.0f || left < 0.0f || right > 1.0f || right < 0.0f) return;
-            mVideoView.setVolume(left, right);
-        }
+        if (mVideoView == null) return;
+        if (left > 1.0f || left < 0.0f || right > 1.0f || right < 0.0f) return;
+        mVideoView.setVolume(left, right);
 
     }
 
@@ -330,9 +322,8 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     public void setRepeatModifer(final boolean repeat) {
         mRepeat = repeat;
-        if (mVideoView != null)
-            mVideoView.repeat(mRepeat);
-
+        if (mVideoView == null) return;
+        mVideoView.repeat(mRepeat);
     }
 
     /**
@@ -343,8 +334,8 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     public void setPlaybackRateModifer(final float rate) {
         mPlaybackSpeed = rate;
-        if (mVideoView != null)
-            mVideoView.setPlaybackRate(mPlaybackSpeed);
+        if (mVideoView == null) return;
+        mVideoView.setPlaybackRate(mPlaybackSpeed);
     }
 
     /**
@@ -354,11 +345,9 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
      */
 
     public void setProgressUpdateInterval(final int progressUpdateInterval) {
-
         mProgressUpdateInterval = progressUpdateInterval;
         mProgressUpdateRunnable = null;
         setProgressUpdateRunnable();
-
     }
 
 
@@ -369,6 +358,10 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
      */
 
     public void getCurrentSelectedTracks(Promise promise) {
+        if (mVideoView == null) {
+            promise.reject("Player is not initialized");
+            return;
+        }
         WritableMap args = new Arguments().createMap();
         args.putInt("selectedAudioTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_AUDIO));
         args.putInt("selectedVideoTrack", mVideoView.getSelectedTrack(ITrackInfo.MEDIA_TRACK_TYPE_VIDEO));
@@ -379,33 +372,36 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     /**
      * Select the audio track for the given ID
+     *
      * @param trackID
      */
 
     public void selectAudioTrack(int trackID) {
-        if (mVideoView != null)
-            mVideoView.selectTrack(trackID);
+        if (mVideoView == null) return;
+        mVideoView.selectTrack(trackID);
     }
 
     /**
      * Select the video track for the given ID
+     *
      * @param trackID
      */
 
 
     public void selectVideoTrack(int trackID) {
-        if (mVideoView != null)
-            mVideoView.selectTrack(trackID);
+        if (mVideoView == null) return;
+        mVideoView.selectTrack(trackID);
     }
 
     /**
      * Deselect the track on a given ID
+     *
      * @param trackID
      */
 
     public void deselectTrack(int trackID) {
-        if (mVideoView != null)
-            mVideoView.deSelectTrack(trackID);
+        if (mVideoView == null) return;
+        mVideoView.deSelectTrack(trackID);
     }
 
     /**
@@ -414,50 +410,47 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
      * @param trackID
      */
     public void selectTextTrack(int trackID) {
-        if (mVideoView != null)
-            mVideoView.selectTrack(trackID);
+        if (mVideoView == null) return;
+        mVideoView.selectTrack(trackID);
     }
-
 
 
     public void setSubtitleDisplay(int textSize, String color, String position, String backgroundColor) {
-        if (mVideoView != null)
-            mVideoView.setSubtitleDisplay(getContext(), textSize, position, color, backgroundColor);
+        if (mVideoView == null) return;
+        mVideoView.setSubtitleDisplay(getContext(), textSize, position, color, backgroundColor);
     }
 
     public void setSubtitles(final boolean subtitlesEnabled) {
-        if (mVideoView != null)
-            mVideoView.setSubtitles(subtitlesEnabled);
+        if (mVideoView == null) return;
+        mVideoView.setSubtitles(subtitlesEnabled);
     }
 
 
-
     public void setAudio(final boolean audioEnabled) {
-        if (mVideoView != null)
-            mVideoView.setAudio(audioEnabled);
+        if (mVideoView == null) return;
+        mVideoView.setAudio(audioEnabled);
 
     }
 
     public void setVideo(final boolean videoEnabled) {
-        if (mVideoView != null)
-            mVideoView.setVideo(videoEnabled);
+        if (mVideoView == null) return;
+        mVideoView.setVideo(videoEnabled);
 
     }
 
     public void setAudioFocus(final boolean audioFocus) {
-        if (mVideoView != null)
-            if (audioFocus) {
-                mVideoView.getAudioFocus();
-            } else {
-                mVideoView.abandonAudioFocus();
-            }
-
+        if (mVideoView == null) return;
+        if (audioFocus) {
+            mVideoView.getAudioFocus();
+        } else {
+            mVideoView.abandonAudioFocus();
+        }
     }
 
 
     public void setBackgroundPlay(final boolean playInBackground) {
-        if (mVideoView != null)
-            mPlayInBackground = playInBackground;
+        if (mVideoView == null) return;
+        mPlayInBackground = playInBackground;
 
 
     }
@@ -501,8 +494,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
 
     public void setSnapshotPath(final String snapshotPath) throws IOException {
-        if (mVideoView == null)
-            return;
+        if (mVideoView == null) return;
         Bitmap bitmap = mVideoView.getBitmap();
         if (bitmap == null)
             return;
@@ -538,16 +530,12 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
             initializePlayer();
             setSrc(mVideoSource, mHeaders, mUserAgent);
         }
-
     }
 
     @Override
     protected void onDetachedFromWindow() {
-        if (!mPlayInBackground) {
-
-            releasePlayer();
-        }
         super.onDetachedFromWindow();
+        releasePlayer();
     }
 
 
@@ -559,7 +547,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     @Override
     public boolean onError(IMediaPlayer iMediaPlayer, int frameworkErr, int implErr) {
-
         WritableMap event = Arguments.createMap();
         WritableMap error = Arguments.createMap();
         error.putInt(Constants.EVENT_PROP_WHAT, frameworkErr);
@@ -633,7 +620,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         WritableMap event = Arguments.createMap();
         event.putString("text", subtitle);
         mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_TIMED_TEXT.toString(), event);
-
     }
 
     @Override
@@ -712,7 +698,6 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         event.putDouble(Constants.EVENT_PROP_CURRENT_TIME, mVideoView.getCurrentPosition() / 1000.0);
         mEventEmitter.receiveEvent(getId(), Constants.Events.EVENT_LOAD.toString(), event);
         mLoaded = true;
-
         applyModifiers();
     }
 
@@ -730,17 +715,13 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     @Override
     public void onHostPause() {
-
         if (!mPlayInBackground) {
             mVideoView.pause();
         }
-
     }
 
     @Override
     public void onHostResume() {
-
-
         if (!mPlayInBackground && !mPaused) {
             setPausedModifier(false);
 
@@ -749,8 +730,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
 
     @Override
     public void onHostDestroy() {
-
-
+        releasePlayer();
     }
 
     void setupLayoutHack() {
@@ -789,6 +769,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
                     mVideoView.setOnTimedTextAvailableListener(null);
                     mVideoView.stopPlayback();
                     mProgressUpdateRunnable = null;
+                    mVideoView.release(true);
                     removeView(mVideoView);
                     mVideoView = null;
                     return null;
