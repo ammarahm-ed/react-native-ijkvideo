@@ -76,9 +76,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     private int mTargetState = STATE_IDLE;
     // All the stuff we need for playing and showing a video
     private IRenderView.ISurfaceHolder mSurfaceHolder = null;
-    private IMediaPlayer mMediaPlayer = null;
     // private int         mAudioSession;
-    private IjkMediaPlayer mIjkMediaPlayer = null;
+    private IjkMediaPlayer mMediaPlayer = null;
     private int mVideoWidth;
     private int mVideoHeight;
     private int mSurfaceWidth;
@@ -136,7 +135,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
             mVideoWidth = mp.getVideoWidth();
             mVideoHeight = mp.getVideoHeight();
-            mAudioSessionId = mIjkMediaPlayer.getAudioSessionId();
+            mAudioSessionId = mMediaPlayer.getAudioSessionId();
 
             int seekToPosition = mSeekWhenPrepared;  // mSeekWhenPrepared may be changed after seekTo() call
             if (seekToPosition != 0) {
@@ -262,7 +261,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
                     if (mOnBufferingUpdateListener != null)
                         mOnBufferingUpdateListener.onBufferingUpdate(mp, percent);
                     mCurrentBufferPercentage = percent;
-                    Log.i("SPEED_BUFFER", String.valueOf(mIjkMediaPlayer.getTcpSpeed() / 1000));
+                    Log.i("SPEED_BUFFER", String.valueOf(mMediaPlayer.getTcpSpeed() / 1000));
                 }
             };
     private IMediaPlayer.OnSeekCompleteListener mSeekCompleteListener = new IMediaPlayer.OnSeekCompleteListener() {
@@ -497,11 +496,11 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     }
 
     public long getTcpSpeed() {
-        return mIjkMediaPlayer.getTcpSpeed();
+        return mMediaPlayer.getTcpSpeed();
     }
 
     public long getFileSize() {
-        return mIjkMediaPlayer.getFileSize();
+        return mMediaPlayer.getFileSize();
     }
 
     /**
@@ -554,7 +553,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     public void setPlaybackRate(float rate) {
         if (mMediaPlayer != null)
-            mIjkMediaPlayer.setSpeed(rate);
+            mMediaPlayer.setSpeed(rate);
 
     }
 
@@ -566,8 +565,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     public void repeat(boolean repeat) {
         if (mMediaPlayer != null)
-
-            mIjkMediaPlayer.setLooping(repeat);
+            mMediaPlayer.setLooping(repeat);
     }
 
     /**
@@ -601,16 +599,16 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     public void selectTrack(int trackID) {
         if (mMediaPlayer == null) return;
-        mIjkMediaPlayer.selectTrack(trackID);
-        mIjkMediaPlayer.seekTo(mIjkMediaPlayer.getCurrentPosition());
+        mMediaPlayer.selectTrack(trackID);
+        mMediaPlayer.seekTo(mMediaPlayer.getCurrentPosition());
     }
 
     public void deSelectTrack(int trackID) {
         if (mMediaPlayer != null)
             Log.d("SETTING_TRACK", String.valueOf(trackID));
-        mIjkMediaPlayer.deselectTrack(trackID);
+        mMediaPlayer.deselectTrack(trackID);
 
-        mIjkMediaPlayer.seekTo(mIjkMediaPlayer.getCurrentPosition());
+        mMediaPlayer.seekTo(mMediaPlayer.getCurrentPosition());
 
     }
 
@@ -974,7 +972,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     @Override
     public int getAudioSessionId() {
-        return mIjkMediaPlayer.getAudioSessionId();
+        return mMediaPlayer.getAudioSessionId();
 
     }
 
@@ -1026,10 +1024,8 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         if (mUserAgent != null)
             ijkMediaPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "user_agent", mUserAgent);
 
-        mIjkMediaPlayer = ijkMediaPlayer;
-
-        mIjkMediaPlayer.setCacheShare(IjkMediaPlayer.FFP_PROP_INT64_SHARE_CACHE_DATA);
-        //mIjkMediaPlayer.setLogEnabled(true);
+        ijkMediaPlayer.setCacheShare(IjkMediaPlayer.FFP_PROP_INT64_SHARE_CACHE_DATA);
+        //ijkMediaPlayer.setLogEnabled(true);
 
         return ijkMediaPlayer;
     }
@@ -1041,9 +1037,9 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
 
     public void setVolume(float left, float right) {
-        if (mIjkMediaPlayer != null)
+        if (mMediaPlayer != null)
 
-            mIjkMediaPlayer.setVolume(left, right);
+            mMediaPlayer.setVolume(left, right);
 
 
     }
@@ -1054,7 +1050,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
 
     public int getSelectedTrack(int trackType) {
 
-        return mIjkMediaPlayer.getSelectedTrack(trackType);
+        return mMediaPlayer.getSelectedTrack(trackType);
 
     }
 
@@ -1062,7 +1058,7 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
     public void enableBackgroundPlayback(final boolean backgroundPlayback) {
         mBackgroundPlayEnabled = backgroundPlayback;
         if (mMediaPlayer != null)
-            mIjkMediaPlayer.setKeepInBackground(mBackgroundPlayEnabled);
+            mMediaPlayer.setKeepInBackground(mBackgroundPlayEnabled);
 
     }
 

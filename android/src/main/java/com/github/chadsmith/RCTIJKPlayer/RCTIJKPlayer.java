@@ -87,6 +87,28 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     }
 
     /**
+     * Release the player
+     */
+
+    private void releasePlayer() {
+        if (mVideoView == null) return;
+
+        final IjkVideoView videoView = mVideoView;
+        mProgressUpdateRunnable = null;
+        mVideoView = null;
+
+        videoView.setOnPreparedListener(null);
+        videoView.setOnErrorListener(null);
+        videoView.setOnCompletionListener(null);
+        videoView.setOnInfoListener(null);
+        videoView.setOnBufferingUpdateListener(null);
+        videoView.setOnTimedTextAvailableListener(null);
+        videoView.stopPlayback();
+        removeView(videoView);
+        videoView.release(true);
+    }
+
+    /**
      * Set the video view and attach it to the screen.
      */
 
@@ -175,16 +197,14 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
         mVideoSource = uriString;
         mHeaders = readableMap;
         mUserAgent = userAgent;
-        if (mVideoView.isPlaying()) {
-            mVideoView.stopPlayback();
-            mVideoView.removeView(mVideoView);
-            mVideoView.release(true);
-            mVideoView = null;
-        }
 
+        if (mVideoView.isPlaying()) {
+            releasePlayer();
+        }
         if (mVideoView == null) {
             initializePlayer();
         }
+
         if (userAgent != null && mVideoView != null)
             mVideoView.setUserAgent(userAgent);
 
@@ -511,6 +531,7 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         if (!mPlayInBackground) {
+            releasePlayer();
             initializePlayer();
             setSrc(mVideoSource, mHeaders, mUserAgent);
         }
@@ -731,29 +752,5 @@ public class RCTIJKPlayer extends FrameLayout implements LifecycleEventListener,
                     MeasureSpec.makeMeasureSpec(getMeasuredHeight(), MeasureSpec.EXACTLY));
             child.layout(0, 0, child.getMeasuredWidth(), child.getMeasuredHeight());
         }
-    }
-
-
-    private void releasePlayer() {
-        if (mVideoView != null)
-            Task.callInBackground(new Callable<Void>() {
-
-                @Override
-                public Void call() throws Exception {
-                    mVideoView.setOnPreparedListener(null);
-                    mVideoView.setOnErrorListener(null);
-                    mVideoView.setOnCompletionListener(null);
-                    mVideoView.setOnInfoListener(null);
-                    mVideoView.setOnBufferingUpdateListener(null);
-                    mVideoView.setOnTimedTextAvailableListener(null);
-                    mVideoView.stopPlayback();
-                    mProgressUpdateRunnable = null;
-                    mVideoView.release(true);
-                    removeView(mVideoView);
-                    mVideoView = null;
-                    return null;
-                }
-
-            });
     }
 }
